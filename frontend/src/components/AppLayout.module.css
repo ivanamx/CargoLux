@@ -1,0 +1,74 @@
+.appShell {
+  background-color: #1A1B1E;
+}
+
+.header {
+  background: rgba(26, 27, 30, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.navbar {
+  background: rgba(26, 27, 30, 0.95);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}
+
+.mainLink {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: rgba(32, 34, 37, 0.7);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.mainLink:hover {
+  background: rgba(59, 130, 246, 0.1);
+  transform: translateX(6px);
+  border: 1px solid var(--link-color);
+}
+
+.mainLinkIcon {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid;
+}
+
+.logoutButton {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(32, 34, 37, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.logoutButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  transform: translateX(6px);
+  border: 1px solid #EF4444;
+}
+
+.logoutIcon {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #EF4444;
+}
+
+.divider {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.main {
+  background-color: #1A1B1E;
+}
