@@ -46,7 +46,7 @@ interface ApiError {
     message: string;
 }
 
-export const API_URL = import.meta.env.VITE_API_URL || 'https://api.cargolux.lat';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://cargolux.lat';
 console.log('API_URL configurada:', API_URL);
 
 const getHeaders = () => {
