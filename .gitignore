@@ -1,28 +1,80 @@
-# Dependencies
-/frontend/node_modules
-/backend/node_modules
-/backend/venv
-__pycache__/
+# Entornos virtuales
+venv/
+env/
+ENV/
+checksystem/
+.venv/
 
-# Environment variables
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Archivos de configuración sensibles
 .env
 .env.local
-.env.development
 .env.production
+.env.development
+*.key
+*.pem
 
-# Build outputs
-/frontend/dist
-/frontend/build
+# Base de datos
+*.db
+*.sqlite
+*.sqlite3
 
-# IDE and OS files
-.DS_Store
-.idea/
-.vscode/
-*.pyc
+# Archivos de respaldo
+*.sql
+*.backup
+*_backup_*
+
+# Logs
 *.log
+logs/
 
-# Debug logs
+# Archivos temporales
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Node modules (frontend)
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-node_modules
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Uploads (mantener estructura pero no archivos)
+uploads/avatars/*
+uploads/contracts/*
+uploads/project_documents/*
+!uploads/avatars/.gitkeep
+!uploads/contracts/.gitkeep
+!uploads/project_documents/.gitkeep

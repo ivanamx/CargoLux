@@ -10,7 +10,7 @@ interface LandingPageSEOProps {
 }
 
 const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
-    title = "ControlAsist - Plataforma de Control de Asistencia Inteligente | Gestión de Equipos y Escaneo QR",
+    title = "CargoLux - Plataforma de Control de Asistencia Inteligente | Gestión de Equipos y Escaneo QR",
     description = "La plataforma más avanzada para control de asistencia con escaneo QR, geolocalización, gestión de equipos y proyectos. Optimiza tu empresa con tecnología de vanguardia. ¡Prueba gratis!",
     keywords = "control asistencia, escaneo QR, geolocalización, gestión equipos, control proyectos, software empresarial, tecnología, optimización procesos, dashboard tiempo real, reportes automáticos",
     canonicalUrl = "https://apizhe.lat",

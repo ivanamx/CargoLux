@@ -27,6 +27,7 @@ export interface ProjectFromAPI {
     last_technician_action?: string;
     assigned_to?: string[];
     location?: {
+        plant_name?: string;
         plant_address?: string;
         plant_coordinates?: string;
         contact_name?: string;

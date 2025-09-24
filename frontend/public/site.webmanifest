@@ -1,6 +1,6 @@
 {
-  "name": "ControlAsist - Plataforma de Control de Asistencia",
-  "short_name": "ControlAsist",
+  "name": "CargoLux - Plataforma de Control de Asistencia",
+  "short_name": "CargoLux",
   "description": "La plataforma más avanzada para control de asistencia con escaneo QR, geolocalización y gestión de equipos",
   "start_url": "/",
   "display": "standalone",

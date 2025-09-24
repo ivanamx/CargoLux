@@ -38,7 +38,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         size="sm"
                         color="gray.2"
                     />
-                    <Text size="lg" fw={500} c="gray.2">Control de Asistencia</Text>
+                    <Text size="lg" fw={500} c="gray.2">CargoLux</Text>
                 </Group>
             </AppShell.Header>
 
