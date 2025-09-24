@@ -368,7 +368,7 @@ export const employeeService = {
                 formData.append('contract', contract);
             }
 
-            const response = await fetch(`${API_URL}/employees/`, {
+            const response = await fetch(`${API_URL}/api/employees/`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -397,7 +397,7 @@ export const employeeService = {
             throw new Error('No authentication token found');
         }
 
-        const response = await fetch(`${API_URL}/employees/`, {
+        const response = await fetch(`${API_URL}/api/employees/`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -418,7 +418,7 @@ export const employeeService = {
             throw new Error('No authentication token found');
         }
 
-        const response = await fetch(`${API_URL}/employees/with-locations`, {
+        const response = await fetch(`${API_URL}/api/employees/with-locations`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -460,17 +460,17 @@ export const employeeService = {
             formData.append('contract', contract);
         }
 
-        return apiClient.putFormData(`/employees/${id}`, formData);
+        return apiClient.putFormData(`/api/employees/${id}`, formData);
     },
 
     deleteEmployee: async (id: number) => {
-        return apiClient.delete(`/employees/${id}`);
+        return apiClient.delete(`/api/employees/${id}`);
     },
 
     async getTechnicianByName(fullName: string): Promise<Employee> {
         try {
             const response = await axios.get(
-                `${API_URL}/employees/technician/${encodeURIComponent(fullName)}`,
+                `${API_URL}/api/employees/technician/${encodeURIComponent(fullName)}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${getToken()}`
@@ -511,7 +511,7 @@ export const projectService = {
             console.log('Datos del proyecto:', formData.get('project'));
             console.log('Archivos:', formData.getAll('files'));
 
-            const response = await fetch(`${API_URL}/projects/`, {
+            const response = await fetch(`${API_URL}/api/projects/`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -540,7 +540,7 @@ export const projectService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/projects/`, {
+            const response = await fetch(`${API_URL}/api/projects/`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -618,7 +618,7 @@ export const projectService = {
             }
 
             const response = await axios.post(
-                `${API_URL}/projects/recalculate-progress`,
+                `${API_URL}/api/projects/recalculate-progress`,
                 {},
                 {
                     headers: {
@@ -642,7 +642,7 @@ export const projectService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/projects/${id}`, {
+            const response = await fetch(`${API_URL}/api/projects/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -663,7 +663,7 @@ export const projectService = {
 
     updateProject: async (id: number, data: any) => {
         const token = getToken();
-        const response = await fetch(`${API_URL}/projects/${id}`, {
+        const response = await fetch(`${API_URL}/api/projects/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -685,7 +685,7 @@ export const projectService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/projects/${projectId}/update-parts`, {
+            const response = await fetch(`${API_URL}/api/projects/${projectId}/update-parts`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -719,7 +719,7 @@ export const projectService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/projects/metrics`, {
+            const response = await fetch(`${API_URL}/api/projects/metrics`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -906,7 +906,7 @@ export const panasonicCheckpointService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/panasonic-checkpoints`, {
+            const response = await fetch(`${API_URL}/api/panasonic-checkpoints`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -934,7 +934,7 @@ export const panasonicCheckpointService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/panasonic-checkpoints/session/${sessionId}`, {
+            const response = await fetch(`${API_URL}/api/panasonic-checkpoints/session/${sessionId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -960,7 +960,7 @@ export const panasonicCheckpointService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/panasonic-checkpoints/project/${projectId}`, {
+            const response = await fetch(`${API_URL}/api/panasonic-checkpoints/project/${projectId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -989,7 +989,7 @@ export const panasonicQualityService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/quality-check`, {
+            const response = await fetch(`${API_URL}/api/quality-check`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -1017,7 +1017,7 @@ export const panasonicQualityService = {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/quality-check/session/${sessionId}`, {
+            const response = await fetch(`${API_URL}/api/quality-check/session/${sessionId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'

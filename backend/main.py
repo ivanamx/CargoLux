@@ -120,11 +120,11 @@ async def test_db(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/companies/", response_model=schemas.Company)
+@app.post("/api/companies/", response_model=schemas.Company)
 def create_company(company: schemas.CompanyCreate, db: Session = Depends(get_db)):
     return crud.create_company(db=db, company=company)
 
-@app.get("/companies/", response_model=List[schemas.Company])
+@app.get("/api/companies/", response_model=List[schemas.Company])
 def read_companies(
     skip: int = 0,
     limit: int = 100,
@@ -134,14 +134,14 @@ def read_companies(
     companies = crud.get_companies(db, skip=skip, limit=limit)
     return companies
 
-@app.get("/companies/{company_id}", response_model=schemas.Company)
+@app.get("/api/companies/{company_id}", response_model=schemas.Company)
 def read_company(company_id: int, db: Session = Depends(get_db)):
     company = crud.get_company(db, company_id=company_id)
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
     return company
 
-@app.post("/employees/")
+@app.post("/api/employees/")
 async def create_employee(
     request: Request,
     employee: str = Form(...),
@@ -174,7 +174,7 @@ async def create_employee(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/employees/")
+@app.get("/api/employees/")
 async def get_employees(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -220,7 +220,7 @@ async def get_employees(
         print(f"Error in get_employees: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/employees/with-locations")
+@app.get("/api/employees/with-locations")
 async def get_employees_with_locations(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -310,21 +310,21 @@ async def get_employees_with_locations(
         print(f"Error in get_employees_with_locations: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/employees/{employee_id}", response_model=schemas.Employee)
+@app.get("/api/employees/{employee_id}", response_model=schemas.Employee)
 def read_employee(employee_id: int, db: Session = Depends(get_db)):
     employee = crud.get_employee(db, employee_id=employee_id)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
     return employee
 
-@app.get("/employees/link/{unique_link}", response_model=schemas.Employee)
+@app.get("/api/employees/link/{unique_link}", response_model=schemas.Employee)
 def read_employee_by_link(unique_link: str, db: Session = Depends(get_db)):
     employee = crud.get_employee_by_link(db, unique_link=unique_link)
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
     return employee
 
-@app.post("/employees/{employee_id}/subscribe")
+@app.post("/api/employees/{employee_id}/subscribe")
 def subscribe_to_push(
     employee_id: int,
     subscription: schemas.PushSubscription,
@@ -349,18 +349,18 @@ def subscribe_to_push(
     print(f"Nueva suscripción guardada: {employee.push_subscription}")
     return {"message": "Successfully subscribed to push notifications"}
 
-@app.get("/vapid-public-key")
+@app.get("/api/vapid-public-key")
 def get_vapid_public_key():
     return {"public_key": VAPID_PUBLIC_KEY}
 
-@app.post("/attendance/", response_model=schemas.AttendanceRecord)
+@app.post("/api/attendance/", response_model=schemas.AttendanceRecord)
 def create_attendance(
     attendance: schemas.AttendanceCreate, 
     db: Session = Depends(get_db)
 ):
     return crud.create_attendance_record(db=db, attendance=attendance)
 
-@app.put("/attendance/{record_id}", response_model=schemas.AttendanceRecord)
+@app.put("/api/attendance/{record_id}", response_model=schemas.AttendanceRecord)
 def update_attendance(record_id: int, db: Session = Depends(get_db)):
     record = crud.update_attendance_record(db=db, record_id=record_id)
     if record is None:
@@ -502,7 +502,7 @@ async def refresh_token(refresh_data: dict, db: Session = Depends(get_db)):
             detail="Could not refresh token"
         )
 
-@app.post("/admins/", response_model=schemas.Admin)
+@app.post("/api/admins/", response_model=schemas.Admin)
 async def create_admin(admin: schemas.AdminCreate, db: Session = Depends(get_db)):
     try:
         print("Creating admin with data:", admin.dict())
@@ -546,7 +546,7 @@ async def create_admin(admin: schemas.AdminCreate, db: Session = Depends(get_db)
             detail=f"Error creating admin: {str(e)}"
         )
 
-@app.get("/projects/", response_model=List[schemas.Project])
+@app.get("/api/projects/", response_model=List[schemas.Project])
 def get_projects(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -603,7 +603,7 @@ def get_projects(
         print("Error getting projects:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/projects/{project_id}", response_model=schemas.Project)
+@app.get("/api/projects/{project_id}", response_model=schemas.Project)
 def get_project(
     project_id: int, 
     db: Session = Depends(get_db),
@@ -662,7 +662,7 @@ def get_project(
         print(f"Error getting project {project_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/projects/")
+@app.post("/api/projects/")
 async def create_project(
     request: Request,
     project: str = Form(...),
@@ -750,7 +750,7 @@ async def create_project(
             headers=headers
         )
 
-@app.put("/projects/{project_id}", response_model=schemas.Project)
+@app.put("/api/projects/{project_id}", response_model=schemas.Project)
 def update_project(
     project_id: int, 
     project: schemas.ProjectUpdate, 
@@ -758,7 +758,7 @@ def update_project(
 ):
     return crud.update_project(db=db, project_id=project_id, project=project)
 
-@app.delete("/projects/{project_id}")
+@app.delete("/api/projects/{project_id}")
 async def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -774,16 +774,16 @@ async def delete_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Rutas para usuarios/empleados
-@app.get("/users/current", response_model=schemas.User)
+@app.get("/api/users/current", response_model=schemas.User)
 def get_current_user_info(current_user: models.User = Depends(get_current_user)):
     return current_user
 
-@app.get("/users", response_model=List[schemas.User])
+@app.get("/api/users", response_model=List[schemas.User])
 def get_users(db: Session = Depends(get_db)):
     return crud.get_users(db)
 
 # Rutas para estadísticas del dashboard
-@app.get("/stats/dashboard")
+@app.get("/api/stats/dashboard")
 def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -791,15 +791,15 @@ def get_dashboard_stats(
     return crud.get_dashboard_stats(db)
 
 # Rutas para horas trabajadas
-@app.get("/time-entries")
+@app.get("/api/time-entries")
 def get_time_entries(db: Session = Depends(get_db)):
     return crud.get_time_entries(db)
 
-@app.post("/time-entries")
+@app.post("/api/time-entries")
 def create_time_entry(time_entry: schemas.TimeEntryCreate, db: Session = Depends(get_db)):
     return crud.create_time_entry(db, time_entry)
 
-@app.post("/time-entries/check-in")
+@app.post("/api/time-entries/check-in")
 async def register_check_in(
     request: Request,
     db: Session = Depends(get_db),
@@ -880,7 +880,7 @@ async def register_check_in(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/attendance/recent")
+@app.get("/api/attendance/recent")
 async def get_recent_activity(db: Session = Depends(get_db)):
     print("\n=== DEBUG RECENT ACTIVITY ===")
     activities = []
@@ -972,7 +972,7 @@ async def test_login(db: Session = Depends(get_db)):
         "password_matches": result
     }
 
-@app.put("/employees/{employee_id}", response_model=schemas.Employee)
+@app.put("/api/employees/{employee_id}", response_model=schemas.Employee)
 async def update_employee(
     employee_id: int,
     employee: str = Form(...),
@@ -1006,7 +1006,7 @@ async def update_employee(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.delete("/employees/{employee_id}")
+@app.delete("/api/employees/{employee_id}")
 async def delete_employee(
     employee_id: int,
     db: Session = Depends(get_db),
@@ -1032,7 +1032,7 @@ async def parse_employee_form(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid data: {str(e)}")
 
-@app.post("/time-entries/check-out")
+@app.post("/api/time-entries/check-out")
 async def register_check_out(
     request: Request,
     db: Session = Depends(get_db),
@@ -1145,7 +1145,7 @@ async def register_check_out(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/time-entries/daily", response_model=List[schemas.TimeEntryResponse])
+@app.get("/api/time-entries/daily", response_model=List[schemas.TimeEntryResponse])
 def get_daily_time_entries(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     today = datetime.now().date()
     entries = db.query(models.TimeEntry, models.Project)\
@@ -1165,7 +1165,7 @@ def get_daily_time_entries(current_user: models.User = Depends(get_current_user)
         "parts_completed": 0
     } for entry in entries]
 
-@app.post("/time-entries/report")
+@app.post("/api/time-entries/report")
 async def submit_time_report(
     request: Request,
     db: Session = Depends(get_db),
@@ -1215,7 +1215,7 @@ async def submit_time_report(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/time-entries/reports/today", response_model=List[schemas.TimeEntryReport])
+@app.get("/api/time-entries/reports/today", response_model=List[schemas.TimeEntryReport])
 async def get_today_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1247,7 +1247,7 @@ async def get_today_reports(
         "status": "pending"  # Por ahora todos serán pending
     } for entry in entries]
 
-@app.get("/time-entries/reports/current-fortnight", response_model=List[schemas.TimeEntryReport])
+@app.get("/api/time-entries/reports/current-fortnight", response_model=List[schemas.TimeEntryReport])
 async def get_current_fortnight_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1288,7 +1288,7 @@ async def get_current_fortnight_reports(
         "status": "pending"
     } for entry in entries]
 
-@app.get("/time-entries/reports/previous-fortnight", response_model=List[schemas.TimeEntryReport])
+@app.get("/api/time-entries/reports/previous-fortnight", response_model=List[schemas.TimeEntryReport])
 async def get_previous_fortnight_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1337,7 +1337,7 @@ async def get_previous_fortnight_reports(
         "status": "pending"
     } for entry in entries]
 
-@app.get("/time-entries/reports/current-month", response_model=List[schemas.TimeEntryReport])
+@app.get("/api/time-entries/reports/current-month", response_model=List[schemas.TimeEntryReport])
 async def get_current_month_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1373,7 +1373,7 @@ async def get_current_month_reports(
         "status": "pending"
     } for entry in entries]
 
-@app.get("/time-entries/reports/previous-month", response_model=List[schemas.TimeEntryReport])
+@app.get("/api/time-entries/reports/previous-month", response_model=List[schemas.TimeEntryReport])
 async def get_previous_month_reports(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1417,7 +1417,7 @@ async def get_previous_month_reports(
         "status": "pending"
     } for entry in entries]
 
-@app.post("/time-entries/close-day")
+@app.post("/api/time-entries/close-day")
 async def close_day(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1456,7 +1456,7 @@ async def close_day(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/time-entries/open-day")
+@app.post("/api/time-entries/open-day")
 async def open_day(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1499,7 +1499,7 @@ async def open_day(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/time-entries/day-status")
+@app.get("/api/time-entries/day-status")
 async def get_day_status(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1515,12 +1515,12 @@ async def get_day_status(
         "closed_by": day_status.user.full_name if day_status and day_status.user else None
     }
 
-@app.get("/users/technicians/count")
+@app.get("/api/users/technicians/count")
 async def get_technicians_count(db: Session = Depends(get_db)):
     total = db.query(models.User).filter(models.User.role == "tecnico").count()
     return {"total": total}
 
-@app.post("/employees/{employee_id}/assign-project")
+@app.post("/api/employees/{employee_id}/assign-project")
 async def assign_project_to_employee(
     employee_id: int,
     project_data: ProjectAssignmentRequest,
@@ -1595,7 +1595,7 @@ async def assign_project_to_employee(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
 
-@app.post("/time-entries/send-reminder")
+@app.post("/api/time-entries/send-reminder")
 async def send_time_report_reminder(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1666,12 +1666,12 @@ async def send_time_report_reminder(
 # Agregar el router de nexus
 app.include_router(
     nexus.router,
-    prefix="/projects/update",
+    prefix="/api/projects/update",
     tags=["projects"]
 )
 
 # Endpoint para crear escaneos
-@app.post("/scanned-codes/", response_model=schemas.ScannedCode)
+@app.post("/api/scanned-codes/", response_model=schemas.ScannedCode)
 async def create_scanned_code(
     scanned_code: schemas.ScannedCodeCreate,
     db: Session = Depends(get_db),
@@ -1718,7 +1718,7 @@ async def create_scanned_code(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener escaneos del usuario actual
-@app.get("/scanned-codes/", response_model=List[schemas.ScannedCode])
+@app.get("/api/scanned-codes/", response_model=List[schemas.ScannedCode])
 async def get_user_scanned_codes(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1749,7 +1749,7 @@ async def get_user_scanned_codes(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener escaneos de hoy del usuario actual
-@app.get("/scanned-codes/today", response_model=List[schemas.ScannedCode])
+@app.get("/api/scanned-codes/today", response_model=List[schemas.ScannedCode])
 async def get_today_scanned_codes(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -1829,7 +1829,7 @@ async def get_scanned_codes_by_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener datos de panasonic_flow por proyecto (para mapas)
-@app.get("/panasonic-flow/project/{project_id}", response_model=List[schemas.PanasonicFlow])
+@app.get("/api/panasonic-flow/project/{project_id}", response_model=List[schemas.PanasonicFlow])
 async def get_panasonic_flow_by_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -1872,7 +1872,7 @@ async def get_panasonic_flow_by_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para guardar códigos escaneados en panasonic_flow
-@app.post("/panasonic-flow", response_model=schemas.PanasonicFlowResponse)
+@app.post("/api/panasonic-flow", response_model=schemas.PanasonicFlowResponse)
 async def create_panasonic_flow(
     flow_data: schemas.PanasonicFlowCreate,
     db: Session = Depends(get_db),
@@ -1923,7 +1923,7 @@ async def create_panasonic_flow(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/update-battery-categories")
+@app.post("/api/update-battery-categories")
 async def update_battery_categories(
     category_data: schemas.BatteryCategoryUpdate,
     db: Session = Depends(get_db),
@@ -1969,7 +1969,7 @@ async def update_battery_categories(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para guardar respuestas de calidad
-@app.post("/quality-check", response_model=schemas.PanasonicQualityCheckResponse)
+@app.post("/api/quality-check", response_model=schemas.PanasonicQualityCheckResponse)
 async def create_quality_check(
     quality_data: schemas.PanasonicQualityCheckCreate,
     db: Session = Depends(get_db),
@@ -2067,7 +2067,7 @@ async def create_quality_check(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener respuestas de calidad por sesión
-@app.get("/quality-check/session/{session_id}", response_model=schemas.PanasonicQualityCheckResponse)
+@app.get("/api/quality-check/session/{session_id}", response_model=schemas.PanasonicQualityCheckResponse)
 async def get_quality_check_by_session(
     session_id: str,
     db: Session = Depends(get_db),
@@ -2093,7 +2093,7 @@ async def get_quality_check_by_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para guardar checkpoints
-@app.post("/panasonic-checkpoints", response_model=schemas.PanasonicCheckpointResponse)
+@app.post("/api/panasonic-checkpoints", response_model=schemas.PanasonicCheckpointResponse)
 async def create_panasonic_checkpoint(
     checkpoint_data: schemas.PanasonicCheckpointCreate,
     db: Session = Depends(get_db),
@@ -2175,7 +2175,7 @@ async def create_panasonic_checkpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener checkpoints por sesión
-@app.get("/panasonic-checkpoints/session/{session_id}", response_model=List[schemas.PanasonicCheckpointResponse])
+@app.get("/api/panasonic-checkpoints/session/{session_id}", response_model=List[schemas.PanasonicCheckpointResponse])
 async def get_panasonic_checkpoints_by_session(
     session_id: str,
     db: Session = Depends(get_db),
@@ -2193,7 +2193,7 @@ async def get_panasonic_checkpoints_by_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener checkpoints por proyecto
-@app.get("/panasonic-checkpoints/project/{project_id}", response_model=List[schemas.PanasonicCheckpointResponse])
+@app.get("/api/panasonic-checkpoints/project/{project_id}", response_model=List[schemas.PanasonicCheckpointResponse])
 async def get_panasonic_checkpoints_by_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -2264,7 +2264,7 @@ async def get_panasonic_checkpoints_by_project(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener quality questions por proyecto
-@app.get("/panasonic-quality-questions/project/{project_id}", response_model=List[schemas.PanasonicQualityCheckResponse])
+@app.get("/api/panasonic-quality-questions/project/{project_id}", response_model=List[schemas.PanasonicQualityCheckResponse])
 async def get_panasonic_quality_questions_by_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -2281,7 +2281,7 @@ async def get_panasonic_quality_questions_by_project(
         print(f"Error getting panasonic quality questions by project: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/attendance/current-status")
+@app.get("/api/attendance/current-status")
 async def get_current_status(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -2358,7 +2358,7 @@ async def get_current_status(
             "status": current_user.status
         }
 
-@app.post("/projects/recalculate-progress")
+@app.post("/api/projects/recalculate-progress")
 async def recalculate_all_projects_progress(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -2373,7 +2373,7 @@ async def recalculate_all_projects_progress(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/projects/{project_id}/update-parts")
+@app.put("/api/projects/{project_id}/update-parts")
 async def update_project_parts(
     project_id: int,
     request: Request,
@@ -2416,7 +2416,7 @@ async def update_project_parts(
         print(f"Error al actualizar partes del proyecto: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.get("/employees/technician/{full_name}")
+@app.get("/api/employees/technician/{full_name}")
 async def get_technician_by_name(
     full_name: str,
     db: Session = Depends(get_db),
@@ -2477,7 +2477,7 @@ async def get_technician_by_name(
         )
 
 # Endpoints para Issues
-@app.post("/issues/", response_model=schemas.IssueResponse)
+@app.post("/api/issues/", response_model=schemas.IssueResponse)
 async def create_issue(
     issue: schemas.IssueCreate,
     db: Session = Depends(get_db),
@@ -2516,7 +2516,7 @@ async def create_issue(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/issues/", response_model=List[schemas.IssueResponse])
+@app.get("/api/issues/", response_model=List[schemas.IssueResponse])
 async def get_issues(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
@@ -2548,7 +2548,7 @@ async def get_issues(
         print(f"Error getting issues: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/issues/count")
+@app.get("/api/issues/count")
 async def get_issues_count(
     status: str = None,
     db: Session = Depends(get_db),
@@ -2583,7 +2583,7 @@ async def get_issues_count(
         print(f"Error counting issues: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/issues/{issue_id}", response_model=schemas.IssueResponse)
+@app.get("/api/issues/{issue_id}", response_model=schemas.IssueResponse)
 async def get_issue(
     issue_id: int,
     db: Session = Depends(get_db),
@@ -2611,7 +2611,7 @@ async def get_issue(
         print(f"Error getting issue: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/issues/project/{project_id}", response_model=List[schemas.IssueResponse])
+@app.get("/api/issues/project/{project_id}", response_model=List[schemas.IssueResponse])
 async def get_issues_by_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -2645,7 +2645,7 @@ async def get_issues_by_project(
         print(f"Error getting issues by project: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/issues/{issue_id}", response_model=schemas.IssueResponse)
+@app.put("/api/issues/{issue_id}", response_model=schemas.IssueResponse)
 async def update_issue(
     issue_id: int,
     issue_update: schemas.IssueUpdate,
