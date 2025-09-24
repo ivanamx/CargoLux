@@ -16,4 +16,11 @@ export const theme = createTheme({
             '#101113',
         ],
     },
+    components: {
+        Notifications: {
+            defaultProps: {
+                position: 'top-right',
+            },
+        },
+    },
 });

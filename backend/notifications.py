@@ -38,23 +38,43 @@ def check_and_notify_employees():
     try:
         # Obtener empleados que no han fichado hoy
         current_date = datetime.now().date()
-        employees = db.query(models.Employee).all()
+        employees = db.query(models.User).filter(models.User.role == 'tecnico').all()
         
-        for employee in db.query(models.Employee).all():
-            # Verificar si ya fichó hoy
-            today_record = db.query(models.AttendanceRecord).filter(
-                models.AttendanceRecord.employee_id == employee.id,
-                models.AttendanceRecord.check_in >= current_date
+        for employee in employees:
+            # Verificar si ya fichÃ³ hoy
+            today_record = db.query(models.Attendance).filter(
+                models.Attendance.user_id == employee.id,
+                models.Attendance.check_in >= current_date
             ).first()
             
-            if not today_record and hasattr(employee, 'push_subscription'):
-                message = {
-                    "title": "Recordatorio de Asistencia",
-                    "body": f"Hola {employee.name}, no olvides registrar tu entrada.",
-                    "icon": "/icon.png",
-                    "badge": "/badge.png"
-                }
-                send_web_push(json.loads(employee.push_subscription), message)
+            if not today_record and employee.push_subscription:
+                try:
+                    subscription = employee.push_subscription
+                    
+                    # Asegurar que subscription sea un diccionario
+                    if isinstance(subscription, str):
+                        try:
+                            subscription = json.loads(subscription)
+                        except json.JSONDecodeError as e:
+                            print(f"Error parsing subscription JSON for {employee.email}: {e}")
+                            continue
+                    
+                    # Verificar que subscription tenga la estructura correcta
+                    if not isinstance(subscription, dict) or 'endpoint' not in subscription:
+                        print(f"Invalid subscription format for {employee.email}: {subscription}")
+                        continue
+                    
+                    message = {
+                        "title": "Recordatorio de Asistencia",
+                        "body": f"Hola {employee.full_name}, no olvides registrar tu entrada.",
+                        "icon": "/icon.png",
+                        "badge": "/badge.png"
+                    }
+                    send_web_push(subscription, message)
+                    print(f"Recordatorio enviado exitosamente a {employee.email}")
+                    
+                except Exception as e:
+                    print(f"Error enviando recordatorio a {employee.email}: {str(e)}")
     finally:
         db.close()
 

@@ -3,10 +3,10 @@ export interface Project {
     name: string;
     status: 'activo' | 'completado' | 'en-progreso';
     client: string;
-    startDate: string;
-    endDate: string;
+    start_date: string;
+    end_date: string;
     progress: number;
-    assignedTo: string[];
+    assigned_to: string[];
     location: {
         plant: {
             address: string;
@@ -24,20 +24,20 @@ export interface Project {
             phone: string;
         };
     };
-    cityImage: string;
+    city_image: string;
     documents: Array<{
         name: string;
         type: string;
         url: string;
     }>;
     equipment: string[];
-    lastTechnician: {
+    last_technician: {
         name: string;
         date: string;
         action: string;
     };
-    totalParts: number;
-    completedParts: number;
+    total_parts: number;
+    completed_parts: number;
 }
 
 export interface RecentActivity {

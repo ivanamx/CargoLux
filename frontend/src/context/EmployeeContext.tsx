@@ -1,25 +1,47 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Employee } from '../pages/Employees';
+import { employeeService } from '../services/api';
 
 interface EmployeeContextType {
     employees: Employee[];
     setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
+    loading: boolean;
+    error: string | null;
+    refreshEmployees: () => Promise<void>;
 }
-
-// Reemplazar los datos de prueba con un array vacío
-const initialEmployees: Employee[] = [];
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
-export function EmployeeProvider({ children }: { children: React.ReactNode }) {
-    const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+export const EmployeeProvider = ({ children }: { children: React.ReactNode }) => {
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const refreshEmployees = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await employeeService.getEmployees();
+            console.log('Empleados cargados:', data); // Debug
+            setEmployees(data);
+            setError(null);
+        } catch (err) {
+            console.error('Error al cargar empleados:', err);
+            setError(err instanceof Error ? err.message : 'Error al cargar empleados');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        refreshEmployees();
+    }, [refreshEmployees]);
 
     return (
-        <EmployeeContext.Provider value={{ employees, setEmployees }}>
+        <EmployeeContext.Provider value={{ employees, setEmployees, loading, error, refreshEmployees }}>
             {children}
         </EmployeeContext.Provider>
     );
-}
+};
 
 export function useEmployees() {
     const context = useContext(EmployeeContext);

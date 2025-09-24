@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AppShell, Burger, Text, NavLink, Group } from '@mantine/core';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { IconDashboard, IconUsers, IconMap2, IconLogout, IconBriefcase, IconClock } from '@tabler/icons-react';
+import { IconDashboard, IconUsers, IconMap2, IconLogout, IconBriefcase, IconClock, IconTools } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
 
 const mainLinks = [
@@ -12,11 +12,30 @@ const mainLinks = [
     { icon: IconMap2, label: 'Mapa', path: '/map' },
 ];
 
+const clientLinks = [
+    { icon: IconDashboard, label: 'Dashboard', path: '/client' },
+    { icon: IconBriefcase, label: 'Proyectos', path: '/client-projects' },
+    { icon: IconMap2, label: 'Mapa', path: '/client-map' },
+];
+
+const devTools = { icon: IconTools, label: 'DevTools', path: '/devtools' };
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
     const [opened, setOpened] = useState(false);
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
+    let links = [...mainLinks];
+    
+    // Usar enlaces específicos según el rol del usuario
+    if (user?.role === 'client') {
+        links = [...clientLinks];
+    }
+    
+    if (user?.role === 'developer') {
+        links.push(devTools);
+    }
 
     return (
         <AppShell
@@ -44,7 +63,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <AppShell.Navbar p="md" style={{ backgroundColor: '#1A1B1E' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ flex: 1 }}>
-                        {mainLinks.map((link) => (
+                        {links.map((link) => (
                             <NavLink
                                 key={link.label}
                                 label={link.label}

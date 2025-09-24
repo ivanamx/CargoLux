@@ -1,28 +1,36 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Float, Boolean, Text, func, JSON, Enum
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Date, Float, Boolean, Text, func, JSON, Enum, CheckConstraint, Numeric
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
 import enum
+
+class UserStatus(str, Enum):
+    PRESENTE = "presente"
+    AUSENTE = "ausente"
+    EN_RUTA = "en-ruta"
+    VACACIONES = "vacaciones"
+    INCAPACIDAD = "incapacidad"
 
 class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
-    username = Column(String, unique=True, index=True)
+    username = Column(String, unique=True)
     full_name = Column(String)
+    avatar = Column(String, nullable=True)
     hashed_password = Column(String)
-    role = Column(String)  # 'admin', 'employee'
-    status = Column(String)  # 'presente', 'ausente', etc.
+    role = Column(String)
+    status = Column(String, default=UserStatus.AUSENTE)
     location = Column(String)
     phone = Column(String)
     is_active = Column(Boolean, default=True)
     company_id = Column(Integer, ForeignKey("companies.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-    push_subscription = Column(String, nullable=True)
+    push_subscription = Column(JSON, nullable=True)
 
-    # Información Personal
-    personal_info = Column(JSON, default={
+    # Campos JSON con valores por defecto
+    personal_info = Column(JSON, default=lambda: {
         "curp": "",
         "rfc": "",
         "birth_date": "",
@@ -33,9 +41,8 @@ class User(Base):
             "relation": ""
         }
     })
-
-    # Información Laboral
-    employment_info = Column(JSON, default={
+    
+    employment_info = Column(JSON, default=lambda: {
         "start_date": "",
         "last_contract_renewal": "",
         "contract_file": "",
@@ -43,18 +50,8 @@ class User(Base):
         "supervisor": "",
         "certifications": []
     })
-
-    # Estadísticas
-    statistics = Column(JSON, default={
-        "total_hours": 0,
-        "total_services": 0,
-        "avg_monthly_hours": 0,
-        "success_rate": 0,
-        "incidents": 0
-    })
-
-    # Información de RRHH
-    hr_info = Column(JSON, default={
+    
+    hr_info = Column(JSON, default=lambda: {
         "salary": {
             "base": 0,
             "last_increase": "",
@@ -69,50 +66,15 @@ class User(Base):
         },
         "documents": []
     })
-
-    # Desempeño
-    performance = Column(JSON, default={
-        "last_evaluation": {
-            "date": "",
-            "score": 0,
-            "evaluator": "",
-            "comments": ""
-        },
-        "skills": [],
-        "certifications": [],
-        "trainings": []
-    })
-
-    # Incidentes
-    incidents = Column(JSON, default=[])
-
-    # Notificaciones
-    notifications = relationship("Notification", back_populates="user")
-
-    # Certificaciones
-    certifications = relationship("Certification", back_populates="user")
-
-    # Historial de vacaciones
-    vacation_history = relationship(
-        "VacationHistory",
-        back_populates="user",
-        foreign_keys="[VacationHistory.user_id]"
-    )
-
-    # Evaluaciones de desempeño
-    evaluations = relationship(
-        "PerformanceEvaluation",
-        back_populates="user",
-        foreign_keys="[PerformanceEvaluation.user_id]"
-    )
-
-    company = relationship("Company", back_populates="users")
+    
+    # Relaciones
+    company = relationship("Company", back_populates="employees")
     attendances = relationship("Attendance", back_populates="user")
-    time_entries = relationship(
-        "TimeEntry",
-        back_populates="user",
-        foreign_keys="[TimeEntry.user_id]"
-    )
+    notifications = relationship("Notification", back_populates="user")
+    certifications = relationship("Certification", back_populates="user")
+    vacation_history = relationship("VacationHistory", back_populates="user", foreign_keys="[VacationHistory.user_id]")
+    evaluations = relationship("PerformanceEvaluation", back_populates="user", foreign_keys="[PerformanceEvaluation.user_id]")
+    time_entries = relationship("TimeEntry", back_populates="user", foreign_keys="[TimeEntry.user_id]")
     project_assignments = relationship("ProjectAssignment", back_populates="user")
 
     def get_time_entries_stats(self, period='day'):
@@ -150,12 +112,18 @@ class User(Base):
                 .order_by(LocationHistory.timestamp.desc())
                 .first()
             )
+            # Usar check_in_latitude/longitude si no hay check_out, sino usar check_out_latitude/longitude
+            if current_attendance.check_out is None:
+                coordinates = [current_attendance.check_in_latitude, current_attendance.check_in_longitude]
+            else:
+                coordinates = [current_attendance.check_out_latitude, current_attendance.check_out_longitude]
+            
             return {
-                'coordinates': [current_attendance.latitude, current_attendance.longitude],
-                'status': current_attendance.status,
-                'city': current_attendance.city,
+                'coordinates': coordinates,
+                'status': self.status,
+                'city': self.location,
                 'check_in_time': current_attendance.check_in.strftime('%H:%M') if current_attendance.check_in else None,
-                'delay_minutes': current_attendance.delay_minutes
+                'delay_minutes': None  # No tenemos este campo en el modelo actual
             }
         return None
 
@@ -191,15 +159,15 @@ class Company(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    users = relationship("User", back_populates="company")
+    employees = relationship("User", back_populates="company")
     projects = relationship("Project", back_populates="company")
 
     def get_daily_reporting_stats(self):
         from datetime import datetime
         
         today = datetime.utcnow().date()
-        total_technicians = sum(1 for user in self.users if user.role == 'employee')
-        reported_today = sum(1 for user in self.users 
+        total_technicians = sum(1 for user in self.employees if user.role == 'employee')
+        reported_today = sum(1 for user in self.employees 
                            if user.role == 'employee' and 
                            any(entry.date.date() == today for entry in user.time_entries))
         
@@ -209,35 +177,30 @@ class Company(Base):
             'pending': total_technicians - reported_today
         }
 
-class ProjectStatus(enum.Enum):
-    active = "activo"
-    completed = "completado"
-    pending = "pendiente"
-    delayed = "retrasado"
+class ProjectStatus(Enum):
+    ACTIVO = "activo"
+    COMPLETADO = "completado"
+    EN_PROGRESO = "en-progreso"
 
 class Project(Base):
     __tablename__ = "projects"
    
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    description = Column(Text, nullable=True)
-    status = Column(String, default='pending')  # 'activo', 'completado', 'pendiente', 'retrasado'
+    name = Column(String)
+    status = Column(String)
     client = Column(String)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     progress = Column(Float, default=0)
-    total_parts = Column(Integer, default=0)
+    total_parts = Column(Integer)
     completed_parts = Column(Integer, default=0)
-    city_image = Column(String)  # URL de la imagen de la ciudad
+    project_type = Column(String(10))
     company_id = Column(Integer, ForeignKey("companies.id"))
+    description = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Último técnico que trabajó en el proyecto
-    last_technician = Column(JSON, default={
-        "name": "",
-        "date": "",
-        "action": ""
-    })
+    last_technician_name = Column(String(255))
+    last_technician_date = Column(DateTime)
+    last_technician_action = Column(String(255))
     
     # Relaciones
     company = relationship("Company", back_populates="projects")
@@ -246,6 +209,38 @@ class Project(Base):
     documents = relationship("ProjectDocument", back_populates="project")
     equipment = relationship("ProjectEquipment", back_populates="project")
     location = relationship("ProjectLocation", back_populates="project", uselist=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            project_type.in_(['bench', 'patios']),
+            name='check_project_type'
+        ),
+        CheckConstraint(
+            status.in_(['activo', 'completado', 'en-progreso']),
+            name='projects_status_check'
+        ),
+    )
+
+    def get_real_completed_parts(self, db):
+        """Obtiene el número real de partes completadas basado en project_updates"""
+        from sqlalchemy import text
+        result = db.execute(
+            text("""
+            SELECT COUNT(*) 
+            FROM project_updates 
+            WHERE project_name = :project_name 
+            AND flash_status = 'updated'
+            """),
+            {"project_name": self.name}
+        ).scalar()
+        return result or 0
+
+    def update_progress(self):
+        """Actualiza el progreso basado en las partes completadas"""
+        if self.total_parts and self.total_parts > 0:
+            self.progress = round((self.completed_parts / self.total_parts) * 100)
+        else:
+            self.progress = 0
 
 class ProjectLocation(Base):
     __tablename__ = "project_locations"
@@ -259,6 +254,7 @@ class ProjectLocation(Base):
     contact_name = Column(String)
     contact_phone = Column(String)
     contact_email = Column(String)
+    plant_name = Column(String)
     
     # Hotel
     hotel_name = Column(String, nullable=True)
@@ -297,9 +293,7 @@ class ProjectAssignment(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"))
     user_id = Column(Integer, ForeignKey("users.id"))
-    role = Column(String)  # 'project_manager', 'team_member'
-    assigned_parts = Column(Integer, default=0)
-    completed_parts = Column(Integer, default=0)
+    role = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     project = relationship("Project", back_populates="assignments")
@@ -311,17 +305,19 @@ class TimeEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     project_id = Column(Integer, ForeignKey("projects.id"))
-    date = Column(DateTime, default=datetime.utcnow)
-    hours = Column(Float)
-    description = Column(Text, nullable=True)
-    status = Column(String, default='pending')  # 'pending', 'approved', 'rejected'
-    approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    approved_at = Column(DateTime, nullable=True)
+    description = Column(Text)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime, nullable=True)
+    duration = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    parts_completed = Column(Integer, default=0)
+    entry_type = Column(String, default='manual')  # 'manual' o 'automatic'
+    photo = Column(Text, nullable=True)  # Campo para almacenar la foto en Base64
+    photo_check_in = Column(Text, nullable=True)  # Foto específica del check-in
+    photo_check_out = Column(Text, nullable=True)  # Foto específica del check-out
     
-    user = relationship("User", foreign_keys=[user_id], back_populates="time_entries")
+    user = relationship("User", back_populates="time_entries")
     project = relationship("Project", back_populates="time_entries")
-    approved_by = relationship("User", foreign_keys=[approved_by_id])
 
 class Attendance(Base):
     __tablename__ = "attendances"
@@ -329,13 +325,15 @@ class Attendance(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     check_in = Column(DateTime)
-    check_out = Column(DateTime, nullable=True)
-    latitude = Column(Float)
-    longitude = Column(Float)
-    status = Column(String)  # 'presente', 'ausente', 'en-ruta'
-    delay_minutes = Column(Integer, nullable=True)
-    city = Column(String)
+    check_out = Column(DateTime)
+    check_in_latitude = Column(Float)
+    check_in_longitude = Column(Float)
+    check_out_latitude = Column(Float)
+    check_out_longitude = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
+    photo = Column(Text, nullable=True)  # Campo para almacenar la foto en Base64
+    photo_check_in = Column(Text, nullable=True)  # Foto específica del check-in
+    photo_check_out = Column(Text, nullable=True)  # Foto específica del check-out
     
     user = relationship("User", back_populates="attendances")
     location_history = relationship("LocationHistory", back_populates="attendance")
@@ -412,4 +410,197 @@ class PerformanceEvaluation(Base):
         foreign_keys="[PerformanceEvaluation.user_id]"
     )
     evaluator = relationship("User", foreign_keys=[evaluator_id])
+
+class DayStatus(Base):
+    __tablename__ = "day_status"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, nullable=False)
+    is_closed = Column(Boolean, default=False)
+    closed_by = Column(Integer, ForeignKey("users.id"))
+    closed_at = Column(DateTime)
+    opened_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    opened_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", foreign_keys=[closed_by])
+    opened_by_user = relationship("User", foreign_keys=[opened_by])
+
+class ScannedCode(Base):
+    __tablename__ = "scanned_codes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(255), nullable=False)
+    type = Column(String(20), nullable=False)  # 'barcode' o 'qrcode'
+    source = Column(String(20), nullable=False)  # 'camera' o 'usb_scanner'
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    latitude = Column(Numeric(10, 8), nullable=True)
+    longitude = Column(Numeric(11, 8), nullable=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(50), nullable=False, default='ok')  # Campo status agregado
+    
+    # Relaciones
+    user = relationship("User")
+    project = relationship("Project")
+    
+    # Campo virtual para el nombre del proyecto (no se guarda en BD)
+    project_name = None
+
+class PanasonicFlow(Base):
+    __tablename__ = "panasonic_flow"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    boxcode = Column(String(255), nullable=False)
+    boxcode2 = Column(String(255), nullable=True)
+    batterycode = Column(String(255), nullable=False)
+    batterycode2 = Column(String(255), nullable=True)
+    batterycode3 = Column(String(255), nullable=True)
+    batterycode4 = Column(String(255), nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, default=28)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    latitude = Column(Numeric(10, 8), nullable=False)
+    longitude = Column(Numeric(11, 8), nullable=False)
+    lat2 = Column(Numeric(10, 8), nullable=True)
+    lon2 = Column(Numeric(11, 8), nullable=True)
+    lat3 = Column(Numeric(10, 8), nullable=True)
+    lon3 = Column(Numeric(11, 8), nullable=True)
+    lat4 = Column(Numeric(10, 8), nullable=True)
+    lon4 = Column(Numeric(11, 8), nullable=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    boxtimestamp = Column(DateTime, nullable=True)
+    status = Column(String(50), nullable=False)
+    categorie = Column(String(100), nullable=False)
+    
+    # Relaciones
+    user = relationship("User")
+    project = relationship("Project")
+    
+    # Campo virtual para el nombre del proyecto (no se guarda en BD)
+    project_name = None
+
+class PanasonicCheckpoint(Base):
+    __tablename__ = "panasonic_checkpoints"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(100), nullable=False)
+    checkpoint_type = Column(String(50), nullable=False)
+    checkpoint_number = Column(Integer, nullable=False)
+    scanned_code = Column(String(255), nullable=False)
+    scan_order = Column(Integer, nullable=True)
+    latitude = Column(Numeric(10, 8), nullable=False)
+    longitude = Column(Numeric(11, 8), nullable=False)
+    accuracy = Column(Numeric(8, 2), nullable=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    status = Column(String(50), nullable=False, default='ok')
+    categorie = Column(String(100), nullable=True)
+    phase = Column(String(20), nullable=False)
+    
+    # Campos adicionales para los 7 checkpoints extra
+    checkpoint_7_storage_exit = Column(String(255), nullable=True)
+    lat_7_storage_exit = Column(Numeric(10, 8), nullable=True)
+    lon_7_storage_exit = Column(Numeric(11, 8), nullable=True)
+    
+    checkpoint_8_cd_arrival = Column(String(255), nullable=True)
+    lat_8_cd_arrival = Column(Numeric(10, 8), nullable=True)
+    lon_8_cd_arrival = Column(Numeric(11, 8), nullable=True)
+    
+    checkpoint_8_cde_exit = Column(String(255), nullable=True)
+    lat_8_cde_exit = Column(Numeric(10, 8), nullable=True)
+    lon_8_cde_exit = Column(Numeric(11, 8), nullable=True)
+    
+    checkpoint_10_e_arrival = Column(String(255), nullable=True)
+    lat_10_e_arrival = Column(Numeric(10, 8), nullable=True)
+    lon_10_e_arrival = Column(Numeric(11, 8), nullable=True)
+    
+    checkpoint_11_e_arrival = Column(String(255), nullable=True)
+    lat_11_e_arrival = Column(Numeric(10, 8), nullable=True)
+    lon_11_e_arrival = Column(Numeric(11, 8), nullable=True)
+    
+    checkpoint_11_e_exit = Column(String(255), nullable=True)
+    lat_11_e_exit = Column(Numeric(10, 8), nullable=True)
+    lon_11_e_exit = Column(Numeric(11, 8), nullable=True)
+    
+    checkpoint_ab_exit = Column(String(255), nullable=True)
+    lat_ab_exit = Column(Numeric(10, 8), nullable=True)
+    lon_ab_exit = Column(Numeric(11, 8), nullable=True)
+    
+    # Relaciones
+    user = relationship("User")
+    project = relationship("Project")
+
+class PanasonicQualityCheck(Base):
+    __tablename__ = "panasonic_quality_questions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(100), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    phase = Column(String(20), nullable=False)  # 'categorizacion' o 'reempacado'
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Respuestas de categorización (1-14)
+    respuesta1 = Column(String(10), nullable=True)
+    respuesta2 = Column(String(10), nullable=True)
+    escaneo2 = Column(String(255), nullable=True)
+    respuesta3 = Column(String(10), nullable=True)
+    respuesta4 = Column(String(10), nullable=True)
+    respuesta5 = Column(String(10), nullable=True)
+    respuesta6 = Column(String(10), nullable=True)
+    respuesta7 = Column(String(10), nullable=True)
+    respuesta8 = Column(String(10), nullable=True)
+    respuesta9 = Column(String(10), nullable=True)
+    escaneo9 = Column(String(255), nullable=True)
+    respuesta10 = Column(String(10), nullable=True)
+    respuesta11 = Column(String(10), nullable=True)
+    respuesta12 = Column(String(10), nullable=True)
+    respuesta13 = Column(String(10), nullable=True)
+    respuesta14 = Column(String(10), nullable=True)
+    
+    # Respuestas de reempacado (15-21)
+    respuesta15 = Column(String(10), nullable=True)
+    escaneo15 = Column(String(255), nullable=True)
+    respuesta16 = Column(String(10), nullable=True)
+    respuesta17 = Column(String(10), nullable=True)
+    escaneo17 = Column(String(255), nullable=True)
+    respuesta18 = Column(String(10), nullable=True)
+    respuesta19 = Column(String(10), nullable=True)
+    respuesta20 = Column(String(10), nullable=True)
+    respuesta21 = Column(String(10), nullable=True)
+    
+    # Campos para categorías de baterías (pregunta 14)
+    battery1_code = Column(String(255), nullable=True)
+    battery1_category = Column(String(10), nullable=True)
+    battery2_code = Column(String(255), nullable=True)
+    battery2_category = Column(String(10), nullable=True)
+    
+    # Campo para tiempo promedio por caja (en segundos)
+    avg_box_time = Column(Integer, nullable=True)
+    
+    # Relaciones
+    user = relationship("User")
+    project = relationship("Project")
+
+class Issue(Base):
+    __tablename__ = "issues"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(String(100), nullable=False)
+    part_number_vin = Column(String(200), nullable=False)
+    project = Column(String(200), nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    location = Column(String(200), nullable=False)
+    date_reported = Column(Date, nullable=False, default=func.current_date())
+    status = Column(String(20), nullable=False, default='pendiente')
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    description = Column(Text, nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relaciones
+    user = relationship("User")
+    project_rel = relationship("Project")
 

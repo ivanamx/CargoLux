@@ -8,6 +8,12 @@ import Employees from './pages/Employees';
 import Map from './pages/Map';
 import Hours from './pages/Hours';
 import Projects from './pages/Projects';
+import ScannerPage from './pages/ScannerPage';
+import ReportePDF from './pages/ReportePDF';
+import PurchaseScans from './pages/PurchaseScans';
+import LandingPage from './pages/LandingPage';
+import ClientDashboard from './pages/ClientDashboard';
+import TechnicianDashboard from './pages/TechnicianDashboard';
 import { useAuth } from './context/AuthContext';
 
 interface ProtectedRouteProps {
@@ -30,9 +36,7 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<LoadingOverlay visible={true} />}>
       <Routes>
-        <Route path="/" element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
-        } />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -57,6 +61,31 @@ export default function AppRoutes() {
         <Route path="/projects" element={
           <ProtectedRoute>
             <Projects />
+          </ProtectedRoute>
+        } />
+        <Route path="/scanner" element={
+          <ProtectedRoute>
+            <ScannerPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/reporte-pdf" element={
+          <ProtectedRoute>
+            <ReportePDF />
+          </ProtectedRoute>
+        } />
+        <Route path="/purchase-scans" element={
+          <ProtectedRoute>
+            <PurchaseScans />
+          </ProtectedRoute>
+        } />
+        <Route path="/client-dashboard" element={
+          <ProtectedRoute>
+            <ClientDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/technician-dashboard" element={
+          <ProtectedRoute>
+            <TechnicianDashboard />
           </ProtectedRoute>
         } />
       </Routes>

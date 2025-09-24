@@ -1,7 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { theme } from './theme';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
@@ -14,6 +14,20 @@ import { LocationProvider } from './context/LocationContext';
 
 const queryClient = new QueryClient();
 
+function ProvidersWrapper({ children }: { children: React.ReactNode }) {
+    const { isAuthenticated } = useAuth();
+    if (isAuthenticated) {
+        return (
+            <ProjectProvider>
+                <EmployeeProvider>
+                    {children}
+                </EmployeeProvider>
+            </ProjectProvider>
+        );
+    }
+    return <>{children}</>;
+}
+
 function App() {
     return (
         <LocationProvider>
@@ -21,13 +35,11 @@ function App() {
                 <QueryClientProvider client={queryClient}>
                     <MantineProvider theme={theme}>
                         <ModalsProvider>
-                            <Notifications />
+                            <Notifications autoClose={4000} />
                             <AuthProvider>
-                                <ProjectProvider>
-                                    <EmployeeProvider>
-                                        <AppContent />
-                                    </EmployeeProvider>
-                                </ProjectProvider>
+                                <ProvidersWrapper>
+                                    <AppContent />
+                                </ProvidersWrapper>
                             </AuthProvider>
                         </ModalsProvider>
                     </MantineProvider>

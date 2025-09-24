@@ -11,7 +11,7 @@ import models
 # Configuración de seguridad
 SECRET_KEY = "tu_clave_secreta_muy_segura"  # En producción, usar variable de entorno
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

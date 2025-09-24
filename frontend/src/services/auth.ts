@@ -1,72 +1,107 @@
 import { API_URL } from './api';
-const TOKEN_KEY = 'auth_token';
 
 export interface LoginCredentials {
-  username: string;
-  password: string;
+    username: string;
+    password: string;
+}
+
+export interface User {
+    id: number;
+    email: string;
+    role: 'admin' | 'tecnico' | 'developer' | 'client';
+    full_name: string;
 }
 
 export interface AuthResponse {
-  access_token: string;
-  token_type: string;
-  user: any;
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    user: User;
 }
 
+const TOKEN_KEY = 'token'; // Usar la misma clave en todos lados
+
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
-  try {
-    console.log('URL de la API:', API_URL);
-    console.log('Enviando credenciales:', credentials);
-    
-    const formData = new URLSearchParams();
-    formData.append('username', credentials.username);
-    formData.append('password', credentials.password);
-    
-    const url = `${API_URL}/token`;
-    console.log('URL completa:', url);
+    try {
+        console.log('Iniciando login con:', credentials.username);
+        
+        // Crear FormData para el login
+        const formData = new URLSearchParams();
+        formData.append('username', credentials.username);
+        formData.append('password', credentials.password);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: formData.toString()
-    });
+        const response = await fetch(`${API_URL}/token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        });
 
-    console.log('Respuesta status:', response.status);
-    const data = await response.json();
-    console.log('Datos recibidos:', data);
-    
-    if (!response.ok) {
-      throw new Error(data.detail || 'Login failed');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Login failed');
+        }
+
+        const data = await response.json();
+        console.log('Token recibido:', data.access_token);
+
+        // Guardar el token, refresh token y la información del usuario
+        localStorage.setItem(TOKEN_KEY, data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        return data;
+    } catch (error) {
+        console.error('Error en login:', error);
+        throw error;
     }
-
-    setToken(data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    
-    return data;
-  } catch (error) {
-    console.error('Error en login:', error);
-    throw error;
-  }
 };
 
-export const setToken = (token: string) => {
-  localStorage.setItem(TOKEN_KEY, token);
+export const getToken = (): string | null => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    console.log('Token recuperado:', token); // Debug
+    return token;
 };
 
-export const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
+export const setToken = (token: string): void => {
+    localStorage.setItem(TOKEN_KEY, token);
 };
 
-export const removeToken = () => {
-  localStorage.removeItem(TOKEN_KEY);
+export const removeToken = (): void => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
 };
 
-export const isAuthenticated = () => {
-  return !!getToken();
+export const refreshAccessToken = async (refreshToken: string): Promise<string | null> => {
+    try {
+        const response = await fetch(`${API_URL}/refresh`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ refresh_token: refreshToken })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to refresh token');
+        }
+
+        const data = await response.json();
+        localStorage.setItem(TOKEN_KEY, data.access_token);
+        return data.access_token;
+    } catch (error) {
+        console.error('Error refreshing token:', error);
+        return null;
+    }
 };
 
-export const logout = () => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem('user');
+export const isAuthenticated = (): boolean => {
+    const token = getToken();
+    return !!token;
+};
+
+export const logout = (): void => {
+    removeToken();
 };
