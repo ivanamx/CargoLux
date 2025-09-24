@@ -88,10 +88,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",  # Desarrollo local
-        "https://apizhe.lat",     # Producción
-        "http://apizhe.lat",      # Producción (fallback)
-        "https://www.apizhe.lat", # Producción con www
-        "http://www.apizhe.lat"   # Producción con www (fallback)
+        "https://cargolux.lat",     # Producción
+        "http://cargolux.lat",      # Producción (fallback)
+        "https://www.cargolux.lat", # Producción con www
+        "http://www.cargolux.lat"   # Producción con www (fallback)
     ],
     allow_credentials=True,
     allow_methods=["*"],
