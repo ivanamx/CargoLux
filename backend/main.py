@@ -1785,7 +1785,7 @@ async def get_today_scanned_codes(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener escaneos por proyecto (para mapas)
-@app.get("/scanned-codes/project/{project_id}", response_model=List[schemas.ScannedCode])
+@app.get("/api/scanned-codes/project/{project_id}", response_model=List[schemas.ScannedCode])
 async def get_scanned_codes_by_project(
     project_id: int,
     db: Session = Depends(get_db),

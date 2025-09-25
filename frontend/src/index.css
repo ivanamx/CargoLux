@@ -387,3 +387,50 @@ button:focus-visible {
 .mantine-Group-root {
     background-color: #1A1B1E !important;
 }
+
+/* Forzar orientación vertical en toda la aplicación (excepto mapas) */
+body {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}
+
+/* Asegurar que todos los contenedores principales mantengan orientación vertical */
+#root,
+#root > div,
+.mantine-AppShell-root,
+.mantine-AppShell-main,
+.mantine-Container-root {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}
+
+/* Forzar orientación vertical en todas las páginas excepto mapas */
+body:not(.map-modal-open) {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}
+
+/* Asegurar que los modales (excepto mapas) mantengan orientación vertical */
+.mantine-Modal-root:not(.map-modal-container) {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}
+
+.mantine-Modal-root:not(.map-modal-container) .mantine-Modal-content {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}
+
+.mantine-Modal-root:not(.map-modal-container) .mantine-Modal-body {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}
+
+/* Forzar orientación vertical en todas las páginas */
+.App,
+.App > div,
+[data-mantine-component="AppShell"],
+[data-mantine-component="Container"] {
+    transform: rotate(0deg) !important;
+    orientation: portrait !important;
+}

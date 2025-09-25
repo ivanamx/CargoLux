@@ -205,7 +205,7 @@ const benefits = [
     {
         icon: IconHeart,
         title: 'Empresas Optimizadas',
-        description: 'Compañías industriales confían en ControlAsist para mejorar sus procesos de control de calidad',
+        description: 'Compañías industriales confían en CargoLux para mejorar sus procesos de control de calidad',
         stat: '50+'
     }
 ];
@@ -216,7 +216,7 @@ const testimonials = [
         name: 'Carlos Mendoza',
         company: 'Panasonic México',
         role: 'Gerente de Control de Calidad',
-        content: 'ControlAsist ha revolucionado nuestros procesos de retrabajo. El sistema de checkpoints y categorización nos permite mantener estándares de calidad excepcionales con trazabilidad completa.',
+        content: 'CargoLux ha revolucionado nuestros procesos de retrabajo. El sistema de checkpoints y categorización nos permite mantener estándares de calidad excepcionales con trazabilidad completa.',
         rating: 5,
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
     },
@@ -242,7 +242,7 @@ const testimonials = [
 const faqs = [
     {
         question: '¿Cómo funciona el sistema de control de calidad con checkpoints?',
-        answer: 'ControlAsist utiliza un sistema de checkpoints GPS para rastrear cada parte en proceso de retrabajo. Los técnicos escanean códigos QR en puntos específicos para registrar categorización, reempacado y control de calidad en tiempo real.'
+        answer: 'CargoLux utiliza un sistema de checkpoints GPS para rastrear cada parte en proceso de retrabajo. Los técnicos escanean códigos QR en puntos específicos para registrar categorización, reempacado y control de calidad en tiempo real.'
     },
     {
         question: '¿Qué es el Project Mode Modal y cómo se usa?',
@@ -396,7 +396,7 @@ const LandingPage: React.FC = () => {
                                         letterSpacing: '-0.02em'
                                     }}
                                 >
-                                    ControlAsist
+                                    CargoLux
                                     <Text component="span" c="blue.3" display="block">
                                         Control de Calidad
                                     </Text>
@@ -671,7 +671,7 @@ const LandingPage: React.FC = () => {
                                 Resultados Comprobados
                             </Badge>
                             <Title order={2} size="2.5rem" fw={800} mb="md" c="white">
-                                ¿Por qué las empresas industriales eligen ControlAsist?
+                                ¿Por qué las empresas industriales eligen CargoLux?
                             </Title>
                             <Text size="lg" c="white" opacity={0.9}>
                                 Empresas industriales han optimizado sus procesos de calidad y retrabajo con nuestro sistema especializado
@@ -927,7 +927,7 @@ const LandingPage: React.FC = () => {
                                 Nuestros Clientes Hablan
                             </Title>
                             <Text size="lg" c="white" opacity={0.9}>
-                                Gerentes y supervisores industriales comparten sus experiencias con ControlAsist
+                                Gerentes y supervisores industriales comparten sus experiencias con CargoLux
                             </Text>
                         </Box>
 
@@ -997,7 +997,7 @@ const LandingPage: React.FC = () => {
                                 Preguntas Frecuentes
                             </Title>
                             <Text size="lg" c="white" opacity={0.9}>
-                                Respuestas a las preguntas más comunes sobre ControlAsist y su implementación en control de calidad
+                                Respuestas a las preguntas más comunes sobre CargoLux y su implementación en control de calidad
                             </Text>
                         </Box>
 
@@ -1057,7 +1057,7 @@ const LandingPage: React.FC = () => {
                         </Title>
                         
                         <Text size="xl" c="white" opacity={0.9} maw={600}>
-                            Únete a las empresas industriales que han revolucionado sus procesos de calidad y retrabajo con ControlAsist
+                            Únete a las empresas industriales que han revolucionado sus procesos de calidad y retrabajo con CargoLux
                         </Text>
 
                         <Group gap="md" wrap="wrap">
@@ -1115,7 +1115,7 @@ const LandingPage: React.FC = () => {
                         <Grid.Col span={{ base: 12, md: 4 }}>
                             <Stack gap="md">
                                 <Title order={3} c="white">
-                                    ControlAsist
+                                    CargoLux
                                 </Title>
                                 <Text c="dimmed" size="sm">
                                     La plataforma más avanzada para control de calidad industrial, 
@@ -1180,7 +1180,7 @@ const LandingPage: React.FC = () => {
 
                     <Group justify="space-between" wrap="wrap">
                         <Text c="dimmed" size="sm">
-                            © 2025 ControlAsist Industrial. Todos los derechos reservados.
+                            © 2025 CargoLux Industrial. Todos los derechos reservados.
                         </Text>
                         <Group gap="md">
                             <Anchor href="#" c="dimmed" size="sm">Privacidad</Anchor>
@@ -1195,7 +1195,7 @@ const LandingPage: React.FC = () => {
             <Modal
                 opened={showContactModal}
                 onClose={() => setShowContactModal(false)}
-                title="Contactar Ventas - ControlAsist"
+                title="Contactar Ventas - CargoLux"
                 size="md"
             >
                 <form onSubmit={handleContactSubmit}>

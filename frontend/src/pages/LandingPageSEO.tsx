@@ -13,13 +13,13 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
     title = "CargoLux - Plataforma de Control de Asistencia Inteligente | Gestión de Equipos y Escaneo QR",
     description = "La plataforma más avanzada para control de asistencia con escaneo QR, geolocalización, gestión de equipos y proyectos. Optimiza tu empresa con tecnología de vanguardia. ¡Prueba gratis!",
     keywords = "control asistencia, escaneo QR, geolocalización, gestión equipos, control proyectos, software empresarial, tecnología, optimización procesos, dashboard tiempo real, reportes automáticos",
-    canonicalUrl = "https://apizhe.lat",
-    ogImage = "https://apizhe.lat/og-image.jpg"
+    canonicalUrl = "https://cargolux.lat",
+    ogImage = "https://cargolux.lat/og-image.jpg"
 }) => {
     const structuredData = {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "ControlAsist",
+        "name": "CargoLux",
         "description": description,
         "url": canonicalUrl,
         "applicationCategory": "BusinessApplication",
@@ -39,7 +39,7 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
         },
         "author": {
             "@type": "Organization",
-            "name": "ControlAsist",
+            "name": "CargoLux",
             "url": canonicalUrl
         },
         "featureList": [
@@ -57,9 +57,9 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
     const organizationData = {
         "@context": "https://schema.org",
         "@type": "Organization",
-        "name": "ControlAsist",
+        "name": "CargoLux",
         "url": canonicalUrl,
-        "logo": "https://apizhe.lat/logo.png",
+        "logo": "https://cargolux.lat/logo.png",
         "description": description,
         "foundingDate": "2024",
         "contactPoint": {
@@ -144,7 +144,7 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
             <meta property="og:image" content={ogImage} />
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
-            <meta property="og:site_name" content="ControlAsist" />
+            <meta property="og:site_name" content="CargoLux" />
             <meta property="og:locale" content="es_MX" />
             
             {/* Twitter */}
@@ -153,15 +153,15 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
             <meta name="twitter:title" content={title} />
             <meta name="twitter:description" content={description} />
             <meta name="twitter:image" content={ogImage} />
-            <meta name="twitter:site" content="@controlasist" />
-            <meta name="twitter:creator" content="@controlasist" />
+            <meta name="twitter:site" content="@cargolux" />
+            <meta name="twitter:creator" content="@cargolux" />
             
             {/* Mobile Optimization */}
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
             <meta name="mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-capable" content="yes" />
             <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-            <meta name="apple-mobile-web-app-title" content="ControlAsist" />
+            <meta name="apple-mobile-web-app-title" content="CargoLux" />
             
             {/* Performance and Caching */}
             <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -189,7 +189,7 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
             {/* Preconnect for Performance */}
             <link rel="preconnect" href="https://fonts.googleapis.com" />
             <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-            <link rel="preconnect" href="https://api.apizhe.lat" />
+            <link rel="preconnect" href="https://api.cargolux.lat" />
             <link rel="dns-prefetch" href="https://images.unsplash.com" />
             
             {/* Structured Data */}
@@ -204,8 +204,8 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
             </script>
             
             {/* Additional SEO Meta Tags */}
-            <meta name="author" content="ControlAsist Team" />
-            <meta name="copyright" content="ControlAsist 2025" />
+            <meta name="author" content="CargoLux Team" />
+            <meta name="copyright" content="CargoLux 2025" />
             <meta name="revisit-after" content="7 days" />
             <meta name="distribution" content="global" />
             <meta name="rating" content="general" />
@@ -219,7 +219,7 @@ const LandingPageSEO: React.FC<LandingPageSEOProps> = ({
             
             {/* App Store Links */}
             <meta name="apple-itunes-app" content="app-id=123456789" />
-            <meta name="google-play-app" content="app-id=com.controlasist.app" />
+            <meta name="google-play-app" content="app-id=com.cargolux.app" />
             
             {/* Additional Performance Hints */}
             <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
