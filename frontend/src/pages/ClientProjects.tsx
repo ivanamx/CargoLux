@@ -1799,7 +1799,7 @@ const MapModal: React.FC<{
                         }
                     }
                     
-                    /* Forzar orientación horizontal para el mapa en móvil */
+                    /* FORZAR VISTA HORIZONTAL - El usuario DEBE rotar su dispositivo */
                     @media (max-width: 768px) {
                         .map-modal-container {
                             transform: rotate(90deg);
