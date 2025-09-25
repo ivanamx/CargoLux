@@ -241,6 +241,23 @@ const MapModal: React.FC<{
     // Estado para la ubicación del usuario
     const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
+    const [isPortrait, setIsPortrait] = useState<boolean>(false);
+
+    // Detectar orientación del dispositivo
+    useEffect(() => {
+        const checkOrientation = () => {
+            setIsPortrait(window.innerHeight > window.innerWidth);
+        };
+        
+        checkOrientation();
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+        
+        return () => {
+            window.removeEventListener('resize', checkOrientation);
+            window.removeEventListener('orientationchange', checkOrientation);
+        };
+    }, []);
 
     // Forzar orientación horizontal cuando se abre el mapa
     useEffect(() => {
@@ -1644,61 +1661,53 @@ const MapModal: React.FC<{
                         }
                     }
                     
-                    /* FORZAR VISTA HORIZONTAL - El usuario DEBE rotar su dispositivo */
+                    /* SOLO LAYOUT HORIZONTAL */
                     @media (max-width: 768px) {
                         .map-modal-container {
-                            transform: rotate(90deg);
-                            transform-origin: center center;
-                            width: 100vh !important;
-                            height: 100vw !important;
+                            width: 100vw !important;
+                            height: 100vh !important;
                             position: fixed !important;
-                            top: 50% !important;
-                            left: 50% !important;
-                            margin-top: -50vw !important;
-                            margin-left: -50vh !important;
+                            top: 0 !important;
+                            left: 0 !important;
                             z-index: 1000 !important;
                         }
                         
-                        .map-modal-content {
+                        .map-modal-container .mantine-Modal-content {
                             width: 100% !important;
                             height: 100% !important;
-                            transform: rotate(-90deg);
-                            transform-origin: center center;
+                            max-width: none !important;
+                            max-height: none !important;
+                            border-radius: 0 !important;
+                        }
+                        
+                        .map-modal-container .mantine-Modal-body {
+                            width: 100% !important;
+                            height: calc(100vh - 60px) !important;
+                            padding: 0 !important;
+                            display: flex !important;
+                            flex-direction: row !important;
+                        }
+                        
+                        .map-modal-container .mantine-Modal-header {
+                            height: 60px !important;
+                            padding: 16px !important;
                         }
                         
                         .map-container-horizontal {
                             display: flex !important;
-                            height: 100% !important;
+                            flex-direction: row !important;
                             width: 100% !important;
+                            height: 100% !important;
                         }
                         
                         .map-paper-horizontal {
+                            flex: 1 !important;
                             height: 100% !important;
+                        }
+                        
+                        .map-modal-container .leaflet-container {
                             width: 100% !important;
-                        }
-                        
-                        /* Forzar orientación horizontal del mapa */
-                        .map-modal-container {
-                            transform: rotate(0deg) !important;
-                        }
-                        
-                        .map-modal-container .mantine-Modal-content {
-                            transform: rotate(0deg) !important;
-                        }
-                        
-                        .map-modal-container .mantine-Modal-body {
-                            transform: rotate(0deg) !important;
-                        }
-                        
-                        /* Asegurar que el mapa se mantenga horizontal */
-                        .map-paper-horizontal {
-                            transform: rotate(0deg) !important;
-                            orientation: landscape !important;
-                        }
-                        
-                        /* Forzar orientación landscape en el viewport cuando el mapa está abierto */
-                        .map-modal-container .mantine-Modal-inner {
-                            transform: rotate(0deg) !important;
+                            height: 100% !important;
                         }
                     }
                 `}
@@ -1715,9 +1724,30 @@ const MapModal: React.FC<{
                     <ActionIcon onClick={onClose} variant="subtle">
                         <IconX size={20} />
                     </ActionIcon>
-                        </Group>
+                </Group>
             }
         >
+            {isPortrait && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    background: '#000',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '24px',
+                    textAlign: 'center',
+                    zIndex: 1001
+                }}>
+                    <div style={{ fontSize: '64px', marginBottom: '20px' }}>📱</div>
+                    <div>Rota tu teléfono para ver el mapa</div>
+                </div>
+            )}
             <div style={{ 
                 display: 'flex', 
                 height: 'calc(100vh - 80px)'
