@@ -245,6 +245,47 @@ const MapModal: React.FC<{
     const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
 
+    // Forzar orientación horizontal cuando se abre el mapa
+    useEffect(() => {
+        // Agregar clase al body para indicar que el mapa está abierto
+        document.body.classList.add('map-modal-open');
+
+        // Bloquear orientación en landscape cuando se abre el mapa
+        const lockOrientation = () => {
+            try {
+                // @ts-ignore - API experimental de orientación
+                if (screen.orientation && screen.orientation.lock) {
+                    // @ts-ignore - API experimental de orientación
+                    screen.orientation.lock('landscape').catch(() => {
+                        // Si no se puede bloquear la orientación, al menos forzar el CSS
+                        console.log('No se pudo bloquear la orientación, usando CSS');
+                    });
+                }
+            } catch (error) {
+                console.log('Error al bloquear orientación:', error);
+            }
+        };
+
+        // Intentar bloquear la orientación
+        lockOrientation();
+
+        // Cleanup: restaurar orientación cuando se cierre el modal
+        return () => {
+            // Remover clase del body
+            document.body.classList.remove('map-modal-open');
+            
+            try {
+                // @ts-ignore - API experimental de orientación
+                if (screen.orientation && screen.orientation.unlock) {
+                    // @ts-ignore - API experimental de orientación
+                    screen.orientation.unlock();
+                }
+            } catch (error) {
+                console.log('Error al desbloquear orientación:', error);
+            }
+        };
+    }, []);
+
     // Cargar códigos de cajas cuando el componente se monte
     useEffect(() => {
         const loadBoxCodes = async () => {
@@ -1565,7 +1606,7 @@ const MapModal: React.FC<{
                             
                             <!-- Footer -->
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px;">
-                                <p>Reporte generado automáticamente por ControlAsist - ${new Date().toLocaleString('es-ES')}</p>
+                                <p>Reporte generado automáticamente por CargoLux - ${new Date().toLocaleString('es-ES')}</p>
                             </div>
                         </div>
                     `;
@@ -1830,6 +1871,30 @@ const MapModal: React.FC<{
                         .map-paper-horizontal {
                             height: 100% !important;
                             width: 100% !important;
+                        }
+                        
+                        /* Forzar orientación horizontal del mapa */
+                        .map-modal-container {
+                            transform: rotate(0deg) !important;
+                        }
+                        
+                        .map-modal-container .mantine-Modal-content {
+                            transform: rotate(0deg) !important;
+                        }
+                        
+                        .map-modal-container .mantine-Modal-body {
+                            transform: rotate(0deg) !important;
+                        }
+                        
+                        /* Asegurar que el mapa se mantenga horizontal */
+                        .map-paper-horizontal {
+                            transform: rotate(0deg) !important;
+                            orientation: landscape !important;
+                        }
+                        
+                        /* Forzar orientación landscape en el viewport cuando el mapa está abierto */
+                        .map-modal-container .mantine-Modal-inner {
+                            transform: rotate(0deg) !important;
                         }
                     }
                 `}
@@ -5929,17 +5994,46 @@ export default function ClientProjects() {
                                                         })}
                                                     />
                                                 </Grid.Col>
-                                                <Grid.Col span={4}>
+                                                <Grid.Col 
+                                                    span={4}
+                                                    style={{
+                                                        '@media (max-width: 768px)': {
+                                                            span: 12,
+                                                            width: '100%'
+                                                        }
+                                                    }}
+                                                >
+                                                    {/* Título del campo - siempre en su propia fila en móvil */}
                                                     <Group align="center" mb={8}>
                                                         <Text size="sm" fw={500}>Tipo de Proyecto</Text>
                                                         <Text size="sm" c="red" fw={700}>*</Text>
                                                     </Group>
-                                                    <Group>
+                                                    
+                                                    {/* Badges - en fila separada en móvil */}
+                                                    <Group
+                                                        style={{
+                                                            '@media (max-width: 768px)': {
+                                                                justifyContent: 'center',
+                                                                gap: '12px',
+                                                                width: '100%',
+                                                                marginTop: '8px'
+                                                            }
+                                                        }}
+                                                    >
                                                         <Badge
                                                             size="lg"
                                                             variant={newProjectData.project_type === 'bench' ? 'filled' : 'outline'}
                                                             color="blue"
-                                                            style={{ cursor: 'pointer' }}
+                                                            style={{ 
+                                                                cursor: 'pointer',
+                                                                '@media (max-width: 768px)': {
+                                                                    minHeight: '48px',
+                                                                    padding: '12px 20px',
+                                                                    fontSize: '16px',
+                                                                    flex: '1',
+                                                                    textAlign: 'center'
+                                                                }
+                                                            }}
                                                             onClick={() => setNewProjectData((prev: Partial<Project>) => ({
                                                                 ...prev,
                                                                 project_type: 'bench'
@@ -5951,7 +6045,16 @@ export default function ClientProjects() {
                                                             size="lg"
                                                             variant={newProjectData.project_type === 'patios' ? 'filled' : 'outline'}
                                                             color="violet"
-                                                            style={{ cursor: 'pointer' }}
+                                                            style={{ 
+                                                                cursor: 'pointer',
+                                                                '@media (max-width: 768px)': {
+                                                                    minHeight: '48px',
+                                                                    padding: '12px 20px',
+                                                                    fontSize: '16px',
+                                                                    flex: '1',
+                                                                    textAlign: 'center'
+                                                                }
+                                                            }}
                                                             onClick={() => setNewProjectData((prev: Partial<Project>) => ({
                                                                 ...prev,
                                                                 project_type: 'patios'
