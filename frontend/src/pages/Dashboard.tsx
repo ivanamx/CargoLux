@@ -223,6 +223,7 @@ const Dashboard = () => {
     const { employees } = useEmployees();
     const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
     const [loading, setLoading] = useState(true);
+
     const theme = useMantineTheme();
     const [isMobile, setIsMobile] = useState(false);
     

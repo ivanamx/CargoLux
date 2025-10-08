@@ -442,7 +442,9 @@ export default function TechnicianDashboard() {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/issues/`, {
+            // Usar la URL base correcta para la API
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${API_BASE_URL}/api/issues/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -517,7 +519,9 @@ export default function TechnicianDashboard() {
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/issues/`, {
+            // Usar la URL base correcta para la API
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${API_BASE_URL}/api/issues/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3954,6 +3958,17 @@ export default function TechnicianDashboard() {
                                 if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
                                     e.preventDefault();
                                     // El valor ya se actualiza con onChange, solo prevenimos el submit
+                                }
+                            }}
+                            onPaste={(e) => {
+                                // Manejar datos pegados desde scanner
+                                const pastedData = e.clipboardData.getData('text');
+                                if (pastedData.trim()) {
+                                    e.preventDefault();
+                                    setInternalSupportForm(prev => ({ 
+                                        ...prev, 
+                                        partNumberVin: pastedData.trim()
+                                    }));
                                 }
                             }}
                             autoFocus

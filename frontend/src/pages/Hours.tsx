@@ -26,6 +26,7 @@ export default function Hours() {
     const [timeEntries, setTimeEntries] = useState<TimeEntryReport[]>([]);
     const [loading, setLoading] = useState(false);
     const [totalTechnicians, setTotalTechnicians] = useState(0);
+
     const [reportedTechnicians, setReportedTechnicians] = useState(0);
     const [technicians, setTechnicians] = useState<Array<{ value: string; label: string }>>([]);
     const [isDayClosed, setIsDayClosed] = useState(false);

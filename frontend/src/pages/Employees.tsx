@@ -84,6 +84,7 @@ export default function Employees() {
     const { projects } = useProjects();
     const location = useLocation();
     const navigate = useNavigate();
+
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string | null>(null);
     const [locationFilter, setLocationFilter] = useState<string | null>(null);

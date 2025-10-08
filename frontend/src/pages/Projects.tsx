@@ -3064,6 +3064,51 @@ const MapModal: React.FC<{
                             >
                                 <IconMapPin size={16} />
                             </ActionIcon>
+                            
+                            {/* Botón Closest solo para proyectos de patios en vista móvil */}
+                            {project.project_type === 'patios' && (
+                                <Button
+                                    size="sm"
+                                    variant="filled"
+                                    color="orange"
+                                    hiddenFrom="md"
+                                    onClick={() => {
+                                        // Función para encontrar el punto más cercano al usuario
+                                        if (userLocation) {
+                                            const distances = units.positions.map(unit => {
+                                                const distance = Math.sqrt(
+                                                    Math.pow(unit.position.lat - userLocation.lat, 2) +
+                                                    Math.pow(unit.position.lng - userLocation.lng, 2)
+                                                );
+                                                return { unit, distance };
+                                            });
+                                            
+                                            const closest = distances.reduce((prev, current) => 
+                                                prev.distance < current.distance ? prev : current
+                                            );
+                                            
+                                            // Centrar el mapa en el punto más cercano
+                                            if (mapRef) {
+                                                mapRef.setView([closest.unit.position.lat, closest.unit.position.lng], 18);
+                                            }
+                                            
+                                            notifications.show({
+                                                title: 'Punto más cercano encontrado',
+                                                message: `Unidad: ${closest.unit.unitId}`,
+                                                color: 'orange'
+                                            });
+                                        } else {
+                                            notifications.show({
+                                                title: 'Ubicación requerida',
+                                                message: 'Primero obtén tu ubicación para encontrar el punto más cercano',
+                                                color: 'yellow'
+                                            });
+                                        }
+                                    }}
+                                >
+                                    Closest
+                                </Button>
+                            )}
                         </>
                     ) : (
                         // Filtros para otros proyectos (estados) - versión móvil compacta

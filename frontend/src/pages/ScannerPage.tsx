@@ -56,6 +56,54 @@ export default function ScannerPage() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+
+    // Bloquear rotación - mantener siempre en vertical
+    useEffect(() => {
+        const lockPortrait = () => {
+            if (window.innerHeight < window.innerWidth) {
+                // Si está en horizontal, forzar a vertical
+                document.body.style.transform = 'rotate(90deg)';
+                document.body.style.transformOrigin = 'center center';
+                document.body.style.width = '100vh';
+                document.body.style.height = '100vw';
+                document.body.style.position = 'fixed';
+                document.body.style.top = '50%';
+                document.body.style.left = '50%';
+                document.body.style.marginTop = '-50vw';
+                document.body.style.marginLeft = '-50vh';
+            } else {
+                // Si está en vertical, restaurar normal
+                document.body.style.transform = '';
+                document.body.style.transformOrigin = '';
+                document.body.style.width = '';
+                document.body.style.height = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.left = '';
+                document.body.style.marginTop = '';
+                document.body.style.marginLeft = '';
+            }
+        };
+
+        lockPortrait();
+        window.addEventListener('resize', lockPortrait);
+        window.addEventListener('orientationchange', lockPortrait);
+
+        return () => {
+            window.removeEventListener('resize', lockPortrait);
+            window.removeEventListener('orientationchange', lockPortrait);
+            // Restaurar estilos al desmontar
+            document.body.style.transform = '';
+            document.body.style.transformOrigin = '';
+            document.body.style.width = '';
+            document.body.style.height = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.marginTop = '';
+            document.body.style.marginLeft = '';
+        };
+    }, []);
     const inputRef = useRef<HTMLInputElement>(null);
     
     const [isCameraActive, setIsCameraActive] = useState(false);
