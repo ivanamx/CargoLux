@@ -597,10 +597,13 @@ class Issue(Base):
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    assigned_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     description = Column(Text, nullable=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
+    assigned_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relaciones
-    user = relationship("User")
+    user = relationship("User", foreign_keys=[created_by])
+    assigned_user = relationship("User", foreign_keys=[assigned_user_id])
     project_rel = relationship("Project")
 

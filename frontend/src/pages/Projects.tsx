@@ -1,7 +1,7 @@
 import { Title, Paper, Text, Group, Badge, Stack, Modal, List, ActionIcon, Box, Grid, Progress, Select, TextInput, Button, Tabs, MultiSelect, NumberInput, Switch, Image, Avatar, Popover, Divider, ThemeIcon, LoadingOverlay, SimpleGrid, RingProgress, Menu } from '@mantine/core';
 import * as XLSX from 'xlsx';
 import { DateInput } from '@mantine/dates';
-import { IconMapPin, IconPhone, IconMail, IconDownload, IconTools, IconBuildingFactory, IconBed, IconUser, IconSearch, IconSettings, IconPlus, IconEdit, IconX, IconFileText, IconTrash, IconCalendar, IconChevronDown, IconBatteryFilled, IconBattery2, IconBattery1, IconCircleCheck, IconChartBar, IconClock, IconBox, IconTag, IconLink, IconFile, IconFileSpreadsheet, IconFileCode, IconArchive, IconChevronDown as IconChevronDownMenu, IconShare } from '@tabler/icons-react';
+import { IconMapPin, IconPhone, IconMail, IconDownload, IconTools, IconBuildingFactory, IconBed, IconUser, IconSearch, IconSettings, IconPlus, IconEdit, IconX, IconFileText, IconTrash, IconCalendar, IconChevronDown, IconBatteryFilled, IconBattery2, IconBattery1, IconCircleCheck, IconChartBar, IconClock, IconBox, IconTag, IconLink, IconFile, IconFileSpreadsheet, IconFileCode, IconArchive, IconChevronDown as IconChevronDownMenu, IconShare, IconCar, IconWalk } from '@tabler/icons-react';
 import { useState, useEffect, useRef } from 'react';
 import { notifications } from '@mantine/notifications';
 import { predefinedClients, predefinedPlants, getCityFromAddress, cityImages } from '../data/projectsData';
@@ -12,7 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, 
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useEmployees } from '../context/EmployeeContext';
 import { useProjects } from '../context/ProjectContext';
-import { MapContainer, TileLayer, Popup, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Popup, Marker, useMap, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { projectService } from '../services/api';
@@ -241,6 +241,17 @@ const MapModal: React.FC<{
     // Estado para la ubicación del usuario
     const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
     const [locationError, setLocationError] = useState<string | null>(null);
+    
+    // Estado para la ruta actual
+    const [currentRoute, setCurrentRoute] = useState<Array<[number, number]> | null>(null);
+    
+    // Log cuando cambie la ruta
+    useEffect(() => {
+        console.log('🛣️ Estado de currentRoute actualizado:', currentRoute ? `${currentRoute.length} puntos` : 'null');
+    }, [currentRoute]);
+    
+    // Estado para el modo de transporte
+    const [transportMode, setTransportMode] = useState<'driving-car' | 'foot-walking'>('driving-car');
     const [isPortrait, setIsPortrait] = useState<boolean>(false);
 
     // Detectar orientación del dispositivo
@@ -391,6 +402,175 @@ const MapModal: React.FC<{
                 maximumAge: 60000
             }
         );
+    };
+
+    // Función para calcular la ruta desde la ubicación del usuario hasta un punto de destino
+    const calculateRoute = async (from: {lat: number, lng: number}, to: {lat: number, lng: number}) => {
+        console.log('🚀 Iniciando cálculo de ruta...');
+        console.log('📍 Desde:', from);
+        console.log('🎯 Hasta:', to);
+        console.log('🚗 Modo de transporte:', transportMode);
+        
+        // Primero intentar con Mapbox
+        const mapboxRoute = await calculateRouteWithMapbox(from, to);
+        if (mapboxRoute) {
+            return mapboxRoute;
+        }
+        
+        // Si Mapbox falla, intentar con OpenRouteService
+        try {
+            // Intentar usar OpenRouteService API (requiere API key válida)
+            // Nota: Esta es una API key de ejemplo, necesitarás obtener una real de https://openrouteservice.org/
+            const apiKey = '5b3ce3597851110001cf6248a8b8b8b8a8b8b8b8'; // API key de ejemplo
+            const url = `https://api.openrouteservice.org/v2/directions/${transportMode}?api_key=${apiKey}&start=${from.lng},${from.lat}&end=${to.lng},${to.lat}`;
+            
+            console.log('🌐 URL de la API:', url);
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
+                }
+            });
+            
+            console.log('📡 Respuesta de la API:', response.status, response.statusText);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('📊 Datos recibidos:', data);
+                
+                if (data.features && data.features[0] && data.features[0].geometry) {
+                    const coordinates = data.features[0].geometry.coordinates;
+                    console.log('🗺️ Coordenadas de la ruta:', coordinates.length, 'puntos');
+                    
+                    // Convertir de [lng, lat] a [lat, lng] para Leaflet
+                    const route = coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number]);
+                    setCurrentRoute(route);
+                    console.log('✅ Ruta real obtenida desde OpenRouteService');
+                    return route;
+                } else {
+                    console.log('❌ No se encontraron coordenadas en la respuesta');
+                }
+            } else {
+                console.log('❌ Error en respuesta de OpenRouteService:', response.status, response.statusText);
+                const errorText = await response.text();
+                console.log('📄 Texto del error:', errorText);
+            }
+        } catch (error) {
+            console.log('💥 Error al obtener ruta real:', error);
+        }
+        
+        console.log('🔄 Usando fallback: línea recta suavizada');
+        
+        // Fallback: crear una línea recta simple con puntos intermedios más suaves
+        const steps = 50; // Más puntos para una línea más suave
+        const route: Array<[number, number]> = [];
+        
+        for (let i = 0; i <= steps; i++) {
+            const ratio = i / steps;
+            // Usar interpolación cúbica para una línea más suave
+            const smoothRatio = ratio * ratio * (3 - 2 * ratio); // Función de suavizado
+            const lat = from.lat + (to.lat - from.lat) * smoothRatio;
+            const lng = from.lng + (to.lng - from.lng) * smoothRatio;
+            route.push([lat, lng]);
+        }
+        
+        setCurrentRoute(route);
+        console.log('✅ Ruta de línea recta creada como fallback');
+        return route;
+    };
+
+    // Función alternativa para calcular ruta usando Mapbox (más confiable)
+    const calculateRouteWithMapbox = async (from: {lat: number, lng: number}, to: {lat: number, lng: number}) => {
+        console.log('🗺️ Intentando con Mapbox API...');
+        
+        try {
+            // Usar Mapbox Directions API (requiere token de acceso)
+            const mapboxToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'; // Token público de ejemplo
+            const profile = transportMode === 'driving-car' ? 'driving' : 'walking';
+            const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${from.lng},${from.lat};${to.lng},${to.lat}?geometries=polyline&access_token=${mapboxToken}`;
+            
+            console.log('🌐 URL Mapbox:', url);
+            
+            const response = await fetch(url);
+            console.log('📡 Respuesta Mapbox:', response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('📊 Datos Mapbox:', data);
+                
+                if (data.routes && data.routes[0] && data.routes[0].geometry) {
+                    // Decodificar polyline de Mapbox
+                    const polyline = data.routes[0].geometry;
+                    const coordinates = decodePolyline(polyline);
+                    
+                    if (coordinates && coordinates.length > 0) {
+                        const route = coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number]);
+                        setCurrentRoute(route);
+                        console.log('✅ Ruta obtenida desde Mapbox');
+                        return route;
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('💥 Error con Mapbox:', error);
+        }
+        
+        return null;
+    };
+
+    // Función para decodificar polyline de Mapbox
+    const decodePolyline = (encoded: string): Array<[number, number]> => {
+        const points: Array<[number, number]> = [];
+        let index = 0;
+        const len = encoded.length;
+        let lat = 0;
+        let lng = 0;
+
+        while (index < len) {
+            let b: number;
+            let shift = 0;
+            let result = 0;
+            do {
+                b = encoded.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            points.push([lng / 1e5, lat / 1e5]);
+        }
+
+        return points;
+    };
+
+    // Función para limpiar la ruta actual
+    const clearRoute = () => {
+        setCurrentRoute(null);
+    };
+
+    // Función para cambiar el modo de transporte y limpiar la ruta actual
+    const changeTransportMode = (mode: 'driving-car' | 'foot-walking') => {
+        setTransportMode(mode);
+        if (currentRoute) {
+            setCurrentRoute(null);
+            notifications.show({
+                title: 'Modo de transporte cambiado',
+                message: `Ahora usando: ${mode === 'driving-car' ? 'Automóvil' : 'Caminando'}. Presiona "Closest" para recalcular la ruta.`,
+                color: 'blue'
+            });
+        }
     };
 
     // Funciones para manejar zoom y arrastre
@@ -3065,50 +3245,6 @@ const MapModal: React.FC<{
                                 <IconMapPin size={16} />
                             </ActionIcon>
                             
-                            {/* Botón Closest solo para proyectos de patios en vista móvil */}
-                            {project.project_type === 'patios' && (
-                                <Button
-                                    size="sm"
-                                    variant="filled"
-                                    color="orange"
-                                    hiddenFrom="md"
-                                    onClick={() => {
-                                        // Función para encontrar el punto más cercano al usuario
-                                        if (userLocation) {
-                                            const distances = units.positions.map(unit => {
-                                                const distance = Math.sqrt(
-                                                    Math.pow(unit.position.lat - userLocation.lat, 2) +
-                                                    Math.pow(unit.position.lng - userLocation.lng, 2)
-                                                );
-                                                return { unit, distance };
-                                            });
-                                            
-                                            const closest = distances.reduce((prev, current) => 
-                                                prev.distance < current.distance ? prev : current
-                                            );
-                                            
-                                            // Centrar el mapa en el punto más cercano
-                                            if (mapRef) {
-                                                mapRef.setView([closest.unit.position.lat, closest.unit.position.lng], 18);
-                                            }
-                                            
-                                            notifications.show({
-                                                title: 'Punto más cercano encontrado',
-                                                message: `Unidad: ${closest.unit.unitId}`,
-                                                color: 'orange'
-                                            });
-                                        } else {
-                                            notifications.show({
-                                                title: 'Ubicación requerida',
-                                                message: 'Primero obtén tu ubicación para encontrar el punto más cercano',
-                                                color: 'yellow'
-                                            });
-                                        }
-                                    }}
-                                >
-                                    Closest
-                                </Button>
-                            )}
                         </>
                     ) : (
                         // Filtros para otros proyectos (estados) - versión móvil compacta
@@ -3156,6 +3292,127 @@ const MapModal: React.FC<{
                             >
                                 <IconMapPin size={16} />
                             </ActionIcon>
+                            
+                            {/* Selectores de modo de transporte para proyectos de patios */}
+                            {project.project_type === 'patios' && (
+                                <Group gap="xs" hiddenFrom="md">
+                                    <ActionIcon
+                                        size="sm"
+                                        variant={transportMode === 'driving-car' ? 'filled' : 'outline'}
+                                        color={transportMode === 'driving-car' ? 'blue' : 'gray'}
+                                        onClick={() => changeTransportMode('driving-car')}
+                                        title="Ruta en automóvil"
+                                    >
+                                        <IconCar size={16} />
+                                    </ActionIcon>
+                                    <ActionIcon
+                                        size="sm"
+                                        variant={transportMode === 'foot-walking' ? 'filled' : 'outline'}
+                                        color={transportMode === 'foot-walking' ? 'green' : 'gray'}
+                                        onClick={() => changeTransportMode('foot-walking')}
+                                        title="Ruta caminando"
+                                    >
+                                        <IconWalk size={16} />
+                                    </ActionIcon>
+                                </Group>
+                            )}
+                            
+                            {/* Botón Closest solo para proyectos de patios en vista móvil */}
+                            {(() => {
+                                console.log('Debug - Project type:', project.project_type);
+                                console.log('Debug - Project name:', project.name);
+                                console.log('Debug - Is patios?', project.project_type === 'patios');
+                                return null;
+                            })()}
+                            {project.project_type === 'patios' && (
+                                <Button
+                                    size="sm"
+                                    variant="filled"
+                                    color="orange"
+                                    hiddenFrom="md"
+                                    leftSection={transportMode === 'driving-car' ? <IconCar size={14} /> : <IconWalk size={14} />}
+                                    onClick={async () => {
+                                        console.log('🔘 Botón Closest presionado!');
+                                        console.log('📍 Ubicación del usuario:', userLocation);
+                                        console.log('🚗 Modo de transporte:', transportMode);
+                                        
+                                        // Función para encontrar el punto más cercano al usuario
+                                        if (userLocation) {
+                                            console.log('✅ Ubicación del usuario disponible');
+                                            
+                                            const distances = units.positions.map(unit => {
+                                                const distance = Math.sqrt(
+                                                    Math.pow(unit.position.lat - userLocation.lat, 2) +
+                                                    Math.pow(unit.position.lng - userLocation.lng, 2)
+                                                );
+                                                return { unit, distance };
+                                            });
+                                            
+                                            console.log('📏 Distancias calculadas:', distances.length, 'unidades');
+                                            
+                                            const closest = distances.reduce((prev, current) => 
+                                                prev.distance < current.distance ? prev : current
+                                            );
+                                            
+                                            console.log('🎯 Unidad más cercana:', closest.unit.unitId, 'Distancia:', closest.distance);
+                                            
+                                            // Calcular y mostrar la ruta
+                                            try {
+                                                console.log('🔄 Iniciando cálculo de ruta...');
+                                                await calculateRoute(userLocation, closest.unit.position);
+                                                
+                                                // Centrar el mapa en el punto más cercano
+                                                if (mapRef) {
+                                                    mapRef.setView([closest.unit.position.lat, closest.unit.position.lng], 18);
+                                                    console.log('🗺️ Mapa centrado en unidad más cercana');
+                                                }
+                                                
+                                                notifications.show({
+                                                    title: 'Ruta calculada',
+                                                    message: `Ruta ${transportMode === 'driving-car' ? 'en automóvil' : 'caminando'} hacia unidad ${closest.unit.unitId} mostrada en verde`,
+                                                    color: 'green'
+                                                });
+                                            } catch (error) {
+                                                console.error('💥 Error al calcular ruta:', error);
+                                                notifications.show({
+                                                    title: 'Error al calcular ruta',
+                                                    message: 'Se mostró línea recta como alternativa',
+                                                    color: 'yellow'
+                                                });
+                                            }
+                                        } else {
+                                            console.log('❌ No hay ubicación del usuario');
+                                            notifications.show({
+                                                title: 'Ubicación requerida',
+                                                message: 'Primero obtén tu ubicación para encontrar el punto más cercano',
+                                                color: 'yellow'
+                                            });
+                                        }
+                                    }}
+                                >
+                                    Closest
+                                </Button>
+                            )}
+                            
+                            {/* Botón para limpiar ruta */}
+                            {currentRoute && (
+                                <Button
+                                    size="sm"
+                                    variant="filled"
+                                    color="red"
+                                    hiddenFrom="md"
+                                    onClick={() => {
+                                        clearRoute();
+                                        notifications.show({
+                                            title: 'Ruta eliminada',
+                                            message: 'La ruta ha sido removida del mapa',
+                                            color: 'red'
+                                        });
+                                    }}
+                                >
+                                    Limpiar Ruta
+                                </Button>
+                            )}
                         </>
                     )}
                 </Group>
@@ -3630,6 +3887,21 @@ const MapModal: React.FC<{
                                             </div>
                                         </Popup>
                                     </Marker>
+                                )}
+                                
+                                {/* Ruta hacia la unidad más cercana */}
+                                {currentRoute && (
+                                    <Polyline
+                                        positions={currentRoute}
+                                        pathOptions={{
+                                            color: transportMode === 'driving-car' ? '#7CFC00' : '#00BFFF', // Verde pistache para auto, azul para caminar
+                                            weight: transportMode === 'driving-car' ? 5 : 4,
+                                            opacity: 0.9,
+                                            dashArray: transportMode === 'driving-car' ? '15, 10' : '5, 5',
+                                            lineCap: 'round',
+                                            lineJoin: 'round'
+                                        }}
+                                    />
                                 )}
                     </MapContainer>
                     </>
@@ -4198,6 +4470,21 @@ Ubicación: ${unit.position.lat.toFixed(6)}, ${unit.position.lng.toFixed(6)}`,
                                     </div>
                                 </Popup>
                             </Marker>
+                        )}
+                        
+                        {/* Ruta hacia la unidad más cercana */}
+                        {currentRoute && (
+                            <Polyline
+                                positions={currentRoute}
+                                pathOptions={{
+                                    color: transportMode === 'driving-car' ? '#7CFC00' : '#00BFFF', // Verde pistache para auto, azul para caminar
+                                    weight: transportMode === 'driving-car' ? 5 : 4,
+                                    opacity: 0.9,
+                                    dashArray: transportMode === 'driving-car' ? '15, 10' : '5, 5',
+                                    lineCap: 'round',
+                                    lineJoin: 'round'
+                                }}
+                            />
                         )}
                     </MapContainer>
                     </>

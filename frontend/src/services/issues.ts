@@ -13,14 +13,49 @@ export interface Issue {
     created_at: string;
     updated_at: string;
     created_by?: number;
+    assigned_user_id?: number;
+    assigned_at?: string;
     description?: string;
     resolved_at?: string;
+    assigned_user?: {
+        id: number;
+        full_name: string;
+        email: string;
+        phone: string;
+        location: string;
+        avatar?: string;
+    };
 }
 
 // Interfaz para la respuesta de conteo de issues
 export interface IssuesCountResponse {
     count: number;
     status: string;
+}
+
+// Interfaz para asignación de técnico a problema
+export interface IssueAssignmentRequest {
+    issue_id: number;
+    assigned_user_id?: number; // None para desasignar
+}
+
+// Interfaz para respuesta de asignaciones
+export interface IssueAssignmentResponse {
+    assignments: Array<{
+        issue_id: number;
+        issue_type: string;
+        issue_project: string;
+        issue_location: string;
+        assigned_at: string;
+        technician: {
+            id: number;
+            full_name: string;
+            email: string;
+            phone: string;
+            location: string;
+            avatar?: string;
+        };
+    }>;
 }
 
 export const issuesService = {
@@ -153,6 +188,48 @@ export const issuesService = {
             await apiClient.delete(`/api/issues/${id}`);
         } catch (error) {
             console.error('Error deleting issue:', error);
+            throw error;
+        }
+    },
+
+    // Asignar técnico a problema
+    assignTechnician: async (assignment: IssueAssignmentRequest): Promise<Issue> => {
+        try {
+            console.log('Asignando técnico a problema:', assignment);
+            const response = await apiClient.post('/api/issues/assign', assignment);
+            console.log('Técnico asignado exitosamente:', response);
+            return response;
+        } catch (error) {
+            console.error('Error assigning technician:', error);
+            throw error;
+        }
+    },
+
+    // Desasignar técnico de problema
+    unassignTechnician: async (issueId: number): Promise<Issue> => {
+        try {
+            console.log('Desasignando técnico del problema:', issueId);
+            const response = await apiClient.post('/api/issues/assign', {
+                issue_id: issueId,
+                assigned_user_id: null
+            });
+            console.log('Técnico desasignado exitosamente:', response);
+            return response;
+        } catch (error) {
+            console.error('Error unassigning technician:', error);
+            throw error;
+        }
+    },
+
+    // Obtener todas las asignaciones
+    getAssignments: async (): Promise<IssueAssignmentResponse> => {
+        try {
+            console.log('Obteniendo asignaciones...');
+            const response = await apiClient.get('/api/issues/assignments');
+            console.log('Asignaciones obtenidas:', response);
+            return response;
+        } catch (error) {
+            console.error('Error getting assignments:', error);
             throw error;
         }
     }

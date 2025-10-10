@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, 
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useEmployees } from '../context/EmployeeContext';
 import { useProjects } from '../context/ProjectContext';
+import { useAuth } from '../context/AuthContext';
 import { MapContainer, TileLayer, Popup, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -217,6 +218,9 @@ const MapModal: React.FC<{
 }> = ({ project, units, batteryCodes = [], onClose }) => {
     // Para proyecto 28, usar filtros de categoría, para otros usar filtros de estado
     const isPanasonicProject = project.id === 28;
+    const { user, logout } = useAuth();
+    const isDREUser = user?.role === 'dre';
+    const navigate = useNavigate();
     
     const [filter, setFilter] = useState<'all' | 'ok' | 'pending' | 'failed' | 'a' | 'b' | 'c' | 'd' | 'e' | 'boxes'>('all');
     const [boxCodes, setBoxCodes] = useState<string[]>([]); // Para almacenar códigos de cajas
@@ -1910,16 +1914,32 @@ const MapModal: React.FC<{
             </style>
         <Modal
             opened={true}
-            onClose={onClose}
+            onClose={isDREUser ? (() => {}) : onClose}
             size="100%"
             fullScreen
+            withCloseButton={!isDREUser}
                 className="map-modal-container"
             title={
                     <Group justify="space-between" style={{ width: '100%' }} className="map-modal-content">
                     <Title order={3}>{project.name}</Title>
-                    <ActionIcon onClick={onClose} variant="subtle">
-                        <IconX size={20} />
-                    </ActionIcon>
+                    {isDREUser ? (
+                        <Button 
+                            variant="subtle" 
+                            color="red" 
+                            size="sm"
+                            onClick={() => {
+                                logout();
+                                navigate('/login');
+                            }}
+                            leftSection={<IconX size={16} />}
+                        >
+                            Salir
+                        </Button>
+                    ) : (
+                        <ActionIcon onClick={onClose} variant="subtle">
+                            <IconX size={20} />
+                        </ActionIcon>
+                    )}
                 </Group>
             }
         >
@@ -4575,6 +4595,7 @@ export default function ClientProjects() {
     // Obtener empleados del contexto
     const { employees, setEmployees } = useEmployees();
     const { projects, setProjects, loading, error, refreshProjects } = useProjects();
+    const { user } = useAuth();
 
     // MOVER la definición aquí donde tenemos acceso a employees
     const availableTechnicians = employees.map((emp: Employee) => ({
@@ -4606,6 +4627,86 @@ export default function ClientProjects() {
             setSelectedStatus(filterParam.toLowerCase());
         }
     }, [filterParam]);
+
+    // Abrir automáticamente el mapa del proyecto 28 para usuarios DRE
+    useEffect(() => {
+        if (user?.role === 'dre' && projects.length > 0 && !mapModal) {
+            const panasonicProject = projects.find(p => p.id === 28);
+            if (panasonicProject) {
+                // Cargar datos reales del proyecto Panasonic
+                const loadPanasonicData = async () => {
+                    try {
+                        // Obtener datos de panasonic_checkpoints para el proyecto 28
+                        const response = await fetch(`/api/panasonic-checkpoints/project/28`, {
+                            headers: {
+                                'Authorization': `Bearer ${getToken()}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            const checkpoints = await response.json();
+                            
+                            // Procesar los datos igual que en el MapModal original
+                            const positions = checkpoints.map((checkpoint: any) => ({
+                                status: checkpoint.status || 'pending',
+                                position: {
+                                    lat: checkpoint.latitude,
+                                    lng: checkpoint.longitude
+                                },
+                                unitId: checkpoint.scanned_code,
+                                timestamp: new Date(checkpoint.timestamp),
+                                technician: checkpoint.user?.full_name || 'Sin técnico',
+                                battery: 0,
+                                location: 'Panasonic',
+                                categorie: checkpoint.categorie,
+                                boxcode: checkpoint.boxcode,
+                                boxtimestamp: checkpoint.boxtimestamp ? new Date(checkpoint.boxtimestamp) : null
+                            }));
+
+                            // Obtener códigos únicos de batería
+                            const batteryCodes: string[] = Array.from(new Set(
+                                checkpoints
+                                    .filter((cp: any) => cp.scanned_code && !cp.scanned_code.startsWith('BOX'))
+                                    .map((cp: any) => `${cp.scanned_code}|${cp.categorie}`)
+                            ));
+
+                            // Calcular estadísticas
+                            const okCount = positions.filter((p: any) => p.status === 'ok').length;
+                            const failedCount = positions.filter((p: any) => p.status === 'failed').length;
+                            const pendingCount = positions.filter((p: any) => p.status === 'pending').length;
+
+                            const units = {
+                                ok: okCount,
+                                pending: pendingCount,
+                                failed: failedCount,
+                                positions: positions
+                            };
+
+                            setMapModal({
+                                project: panasonicProject,
+                                units: units,
+                                batteryCodes: batteryCodes
+                            });
+
+                            notifications.show({
+                                title: 'Bienvenido DRE',
+                                message: `Acceso directo al mapa del proyecto Panasonic - ${positions.length} registros cargados`,
+                                color: 'blue',
+                                autoClose: 3000
+                            });
+                        } else {
+                            console.error('Error al cargar datos del proyecto Panasonic');
+                        }
+                    } catch (error) {
+                        console.error('Error al cargar datos:', error);
+                    }
+                };
+
+                loadPanasonicData();
+            }
+        }
+    }, [user?.role, projects, mapModal]);
 
     // Modificar el filtrado de proyectos para que coincida con el estado del filtro
     const filteredProjects = safeProjects.filter(project => {

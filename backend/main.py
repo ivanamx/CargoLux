@@ -2540,9 +2540,47 @@ async def get_issues(
         # Ordenar por fecha de creación descendente
         issues = query.order_by(models.Issue.created_at.desc()).all()
         
-        print(f"Found {len(issues)} issues")
+        # Convertir los issues a diccionarios para agregar información del técnico asignado
+        issues_data = []
+        for issue in issues:
+            issue_dict = {
+                "id": issue.id,
+                "type": issue.type,
+                "part_number_vin": issue.part_number_vin,
+                "project": issue.project,
+                "project_id": issue.project_id,
+                "location": issue.location,
+                "date_reported": issue.date_reported,
+                "status": issue.status,
+                "created_at": issue.created_at,
+                "updated_at": issue.updated_at,
+                "created_by": issue.created_by,
+                "assigned_user_id": issue.assigned_user_id,
+                "assigned_at": issue.assigned_at,
+                "resolved_at": issue.resolved_at,
+                "description": issue.description,
+                "assigned_user": None
+            }
+            
+            if issue.assigned_user_id:
+                technician = db.query(models.User).filter(
+                    models.User.id == issue.assigned_user_id
+                ).first()
+                if technician:
+                    issue_dict["assigned_user"] = {
+                        "id": technician.id,
+                        "full_name": technician.full_name,
+                        "email": technician.email,
+                        "phone": technician.phone,
+                        "location": technician.location,
+                        "avatar": technician.avatar
+                    }
+            
+            issues_data.append(issue_dict)
         
-        return issues
+        print(f"Found {len(issues_data)} issues")
+        
+        return issues_data
         
     except Exception as e:
         print(f"Error getting issues: {str(e)}")
@@ -2688,4 +2726,137 @@ async def update_issue(
     except Exception as e:
         print(f"Error updating issue: {str(e)}")
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint para asignar técnico a problema
+@app.post("/api/issues/assign", response_model=schemas.IssueResponse)
+async def assign_technician_to_issue(
+    assignment: schemas.IssueAssignmentRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Asigna un técnico a un problema o desasigna si assigned_user_id es None
+    """
+    try:
+        print(f"Assignment request: {assignment}")
+        
+        # Verificar que el problema existe
+        db_issue = db.query(models.Issue).filter(models.Issue.id == assignment.issue_id).first()
+        if not db_issue:
+            raise HTTPException(status_code=404, detail="Issue not found")
+        
+        # Si se está asignando un técnico, verificar que existe y es técnico
+        if assignment.assigned_user_id:
+            technician = db.query(models.User).filter(
+                models.User.id == assignment.assigned_user_id,
+                models.User.role == 'tecnico'
+            ).first()
+            if not technician:
+                raise HTTPException(status_code=404, detail="Technician not found or not a technician")
+        
+        # Actualizar la asignación
+        db_issue.assigned_user_id = assignment.assigned_user_id
+        db_issue.assigned_at = func.now() if assignment.assigned_user_id else None
+        
+        db.commit()
+        db.refresh(db_issue)
+        
+        # Crear un diccionario con la información del issue actualizado
+        issue_dict = {
+            "id": db_issue.id,
+            "type": db_issue.type,
+            "part_number_vin": db_issue.part_number_vin,
+            "project": db_issue.project,
+            "project_id": db_issue.project_id,
+            "location": db_issue.location,
+            "date_reported": db_issue.date_reported,
+            "status": db_issue.status,
+            "created_at": db_issue.created_at,
+            "updated_at": db_issue.updated_at,
+            "created_by": db_issue.created_by,
+            "assigned_user_id": db_issue.assigned_user_id,
+            "assigned_at": db_issue.assigned_at,
+            "resolved_at": db_issue.resolved_at,
+            "description": db_issue.description,
+            "assigned_user": None
+        }
+        
+        # Obtener información del técnico asignado si existe
+        if db_issue.assigned_user_id:
+            technician_info = db.query(models.User).filter(
+                models.User.id == db_issue.assigned_user_id
+            ).first()
+            if technician_info:
+                issue_dict["assigned_user"] = {
+                    "id": technician_info.id,
+                    "full_name": technician_info.full_name,
+                    "email": technician_info.email,
+                    "phone": technician_info.phone,
+                    "location": technician_info.location,
+                    "avatar": technician_info.avatar
+                }
+        
+        action = "assigned" if assignment.assigned_user_id else "unassigned"
+        print(f"Technician {action} successfully to issue {assignment.issue_id}")
+        
+        return issue_dict
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error assigning technician: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint para obtener asignaciones de técnicos
+@app.get("/api/issues/assignments")
+async def get_issue_assignments(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtiene todas las asignaciones de técnicos a problemas
+    """
+    try:
+        # Solo clientes y admins pueden ver todas las asignaciones
+        if current_user.role not in ['client', 'admin']:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Obtener todos los issues con asignaciones
+        issues = db.query(models.Issue).filter(
+            models.Issue.assigned_user_id.isnot(None)
+        ).order_by(models.Issue.assigned_at.desc()).all()
+        
+        # Agregar información del técnico asignado
+        assignments = []
+        for issue in issues:
+            technician = db.query(models.User).filter(
+                models.User.id == issue.assigned_user_id
+            ).first()
+            
+            if technician:
+                assignments.append({
+                    "issue_id": issue.id,
+                    "issue_type": issue.type,
+                    "issue_project": issue.project,
+                    "issue_location": issue.location,
+                    "assigned_at": issue.assigned_at,
+                    "technician": {
+                        "id": technician.id,
+                        "full_name": technician.full_name,
+                        "email": technician.email,
+                        "phone": technician.phone,
+                        "location": technician.location,
+                        "avatar": technician.avatar
+                    }
+                })
+        
+        print(f"Found {len(assignments)} assignments")
+        return {"assignments": assignments}
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error getting assignments: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

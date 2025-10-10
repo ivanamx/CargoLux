@@ -17,7 +17,8 @@ import {
     IconFilter,
     IconSearch,
     IconX,
-    IconShare
+    IconShare,
+    IconUserPlus
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useEmployees } from '../context/EmployeeContext';
@@ -35,6 +36,29 @@ import { API_URL } from '../services/api';
 import { getToken } from '../services/auth';
 import { predefinedPlants, predefinedClients } from '../data/projectsData';
 import { issuesService, type Issue } from '../services/issues';
+import {
+    DndContext,
+    DragOverlay,
+    DragStartEvent,
+    DragEndEvent,
+    DragOverEvent,
+    useSensor,
+    useSensors,
+    PointerSensor,
+    KeyboardSensor,
+    closestCenter,
+    useDroppable,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const calculateStats = (employees: Employee[]) => [
     { 
@@ -201,6 +225,16 @@ interface ReportedProblem {
     created_by?: number;
     description?: string;
     resolved_at?: string;
+    assigned_user_id?: number;
+    assigned_at?: string;
+    assigned_user?: {
+        id: number;
+        full_name: string;
+        email: string;
+        phone: string;
+        location: string;
+        avatar?: string;
+    };
 }
 
 // Actualizar la interfaz ProjectInProgress
@@ -232,6 +266,22 @@ const Dashboard = () => {
     const [selectedProjectEquipment, setSelectedProjectEquipment] = useState<ProjectInProgress | null>(null);
     const [selectedEquipment, setSelectedEquipment] = useState<ProjectEquipment | null>(null);
     const [problemsModalOpen, setProblemsModalOpen] = useState(false);
+    const [assignMode, setAssignMode] = useState(false);
+    
+    // Estado para drag and drop
+    const [activeTechnician, setActiveTechnician] = useState<Employee | null>(null);
+    
+    // Sensores para drag and drop
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
     const [projectFilter, setProjectFilter] = useState<string>('');
     const [typeFilter, setTypeFilter] = useState<string>('');
     const [statusFilter, setStatusFilter] = useState<string>('');
@@ -339,6 +389,321 @@ const Dashboard = () => {
             // En caso de error, mantener array vacío
             setReportedProblems([]);
         }
+    };
+
+    // Funciones para drag and drop
+    const handleDragStart = (event: DragStartEvent) => {
+        const { active } = event;
+        const technicianId = active.id.toString().replace('tech-', '');
+        const technician = employees.find(emp => emp.id.toString() === technicianId && emp.role === 'tecnico');
+        setActiveTechnician(technician || null);
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        
+        console.log('Drag End Event:', { active: active.id, over: over?.id });
+        
+        if (!over) {
+            setActiveTechnician(null);
+            return;
+        }
+
+        const technicianId = parseInt(active.id.toString().replace('tech-', ''));
+        const problemId = parseInt(over.id.toString().replace('problem-', ''));
+
+        console.log('Assignment Details:', { technicianId, problemId });
+
+        try {
+            // Asignar técnico al problema usando el servicio del backend
+            const updatedIssue = await issuesService.assignTechnician({
+                issue_id: problemId,
+                assigned_user_id: technicianId
+            });
+
+            // Actualizar el estado local con la respuesta del backend
+            setReportedProblems(prev => 
+                prev.map(issue => 
+                    issue.id === problemId ? updatedIssue : issue
+                )
+            );
+
+            setActiveTechnician(null);
+            
+            // Mostrar notificación de éxito
+            const technician = employees.find(emp => emp.id === technicianId);
+            const problem = reportedProblems.find(p => p.id === problemId);
+            
+            if (technician && problem) {
+                notifications.show({
+                    title: 'Asignación Exitosa',
+                    message: `${technician.full_name} asignado a ${getTypeLabel(problem.type)}`,
+                    color: 'green',
+                    autoClose: 3000,
+                });
+            }
+        } catch (error) {
+            console.error('Error assigning technician:', error);
+            notifications.show({
+                title: 'Error en Asignación',
+                message: 'No se pudo asignar el técnico al problema',
+                color: 'red',
+                autoClose: 3000,
+            });
+        }
+    };
+
+    const handleDragCancel = () => {
+        setActiveTechnician(null);
+    };
+
+    // Función para obtener técnico asignado a un problema
+    const getAssignedTechnician = (problemId: string) => {
+        const problem = reportedProblems.find(p => p.id.toString() === problemId);
+        return problem?.assigned_user || null;
+    };
+
+    // Función para verificar si un técnico está asignado
+    const isTechnicianAssigned = (technicianId: number) => {
+        return reportedProblems.some(problem => 
+            problem.assigned_user_id === technicianId
+        );
+    };
+
+    // Componente para card de técnico draggable
+    const DraggableTechnicianCard = ({ technician }: { technician: Employee }) => {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging,
+        } = useSortable({ id: `tech-${technician.id}` });
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.5 : 1,
+        };
+
+        const isAssigned = isTechnicianAssigned(technician.id);
+
+        return (
+            <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+                <Card 
+                    p="md" 
+                    radius="md" 
+                    withBorder 
+                    className="mobile-technician-card"
+                    style={{
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        opacity: isAssigned ? 0.6 : 0.9,
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                        border: isAssigned ? '2px dashed #666' : undefined,
+                        backgroundColor: isAssigned ? 'rgba(102, 102, 102, 0.1)' : undefined,
+                    }}
+                >
+                    <Stack gap="sm">
+                        {/* Header del técnico */}
+                        <Group justify="space-between" align="flex-start">
+                            <Group gap="sm">
+                                <Avatar
+                                    src={technician.avatar}
+                                    size="lg"
+                                    radius="md"
+                                    color="blue"
+                                >
+                                    {technician.full_name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Box>
+                                    <Text fw={600} size="md" c="white">
+                                        {technician.full_name}
+                                    </Text>
+                                    <Text size="sm" c="dimmed">
+                                        Técnico Especializado
+                                    </Text>
+                                </Box>
+                            </Group>
+                            <Group gap="xs">
+                                <Badge 
+                                    color={technician.status === 'presente' ? 'green' : 'red'}
+                                    variant="light"
+                                >
+                                    {technician.status === 'presente' ? 'Disponible' : 'No Disponible'}
+                                </Badge>
+                                {isAssigned && (
+                                    <Badge color="orange" variant="light" size="sm">
+                                        Asignado
+                                    </Badge>
+                                )}
+                            </Group>
+                        </Group>
+
+                    </Stack>
+                </Card>
+            </div>
+        );
+    };
+
+    // Componente para card de problema droppable
+    const DroppableProblemCard = ({ problem }: { problem: ReportedProblem }) => {
+        const assignedTechnician = getAssignedTechnician(problem.id.toString());
+        const isAssigned = !!assignedTechnician;
+        
+        console.log(`Problem ${problem.id} - Assigned: ${isAssigned}, Technician:`, assignedTechnician);
+        
+        const { setNodeRef, isOver } = useDroppable({
+            id: `problem-${problem.id}`,
+        });
+
+        return (
+            <div ref={setNodeRef}>
+                <Card 
+                    p="md" 
+                    radius="md" 
+                    withBorder 
+                    className="mobile-problem-card"
+                    style={{
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        opacity: isAssigned ? 0.6 : 0.9,
+                        border: isAssigned ? '2px dashed #10B981' : isOver ? '2px dashed #3B82F6' : undefined,
+                        backgroundColor: isAssigned ? 'rgba(16, 185, 129, 0.1)' : isOver ? 'rgba(59, 130, 246, 0.1)' : undefined,
+                        cursor: isAssigned ? 'not-allowed' : 'default',
+                        filter: isAssigned ? 'grayscale(0.3)' : 'none',
+                        transform: isOver ? 'scale(1.02)' : 'scale(1)',
+                    }}
+                >
+                <Stack gap="sm">
+                    {/* Header del problema */}
+                    <Group justify="space-between" align="flex-start" className="mobile-problem-header">
+                        <Group gap="sm">
+                            <ThemeIcon 
+                                size="lg" 
+                                variant="light" 
+                                color={
+                                    problem.type === 'Falla Mecánica' ? 'red' :
+                                    problem.type === 'Error de Software' ? 'blue' :
+                                    'orange'
+                                }
+                            >
+                                <IconTools size={20} />
+                            </ThemeIcon>
+                            <Box>
+                                <Text fw={600} size="lg" c="white" className="mobile-problem-title">
+                                    {getTypeLabel(problem.type)}
+                                </Text>
+                                <Text size="sm" c="dimmed" className="mobile-problem-date">
+                                    Reportado el {new Date(problem.date_reported).toLocaleDateString('es-MX')}
+                                </Text>
+                            </Box>
+                        </Group>
+                        <Group gap="sm">
+                            <ActionIcon
+                                variant="light"
+                                color="blue"
+                                size="lg"
+                                onClick={() => shareIndividualProblem(problem)}
+                                title="Compartir problema"
+                                style={{ opacity: isAssigned ? 0.5 : 1 }}
+                            >
+                                <IconShare size={18} />
+                            </ActionIcon>
+                            <Badge 
+                                color={
+                                    problem.status === 'pendiente' ? 'red' :
+                                    problem.status === 'en-revision' ? 'yellow' :
+                                    'green'
+                                }
+                                variant="light"
+                            >
+                                {problem.status === 'pendiente' ? 'Pendiente' :
+                                 problem.status === 'en-revision' ? 'En Revisión' :
+                                 'Resuelto'}
+                            </Badge>
+                            {isAssigned && (
+                                <Badge color="green" variant="filled" size="sm">
+                                    Asignado
+                                </Badge>
+                            )}
+                        </Group>
+                    </Group>
+
+                    {/* Información del problema */}
+                    <Grid className="mobile-problem-info">
+                        <Grid.Col span={6}>
+                            <Stack gap="xs">
+                                <Group gap="xs">
+                                    <Text size="sm" c="dimmed" className="mobile-problem-info-text">No. de Parte / VIN:</Text>
+                                    <Text size="sm" fw={500} c="white" className="mobile-problem-info-text">{problem.part_number_vin}</Text>
+                                </Group>
+                                <Group gap="xs">
+                                    <Text size="sm" c="dimmed" className="mobile-problem-info-text">Proyecto:</Text>
+                                    <Text size="sm" fw={500} c="white" className="mobile-problem-info-text">{problem.project}</Text>
+                                </Group>
+                            </Stack>
+                        </Grid.Col>
+                        <Grid.Col span={6}>
+                            <Stack gap="xs">
+                                <Group gap="xs">
+                                    <Text size="sm" c="dimmed" className="mobile-problem-info-text">Ubicación:</Text>
+                                    <Text 
+                                        size="sm" 
+                                        fw={500} 
+                                        c="blue" 
+                                        className="mobile-problem-location"
+                                        style={{ 
+                                            cursor: 'pointer', 
+                                            textDecoration: 'underline',
+                                            textDecorationColor: 'rgba(255, 255, 255, 0.3)'
+                                        }}
+                                        onClick={() => openLocationInMaps(problem.location)}
+                                        title="Hacer clic para abrir en mapas"
+                                    >
+                                        {problem.location}
+                                    </Text>
+                                </Group>
+                            </Stack>
+                        </Grid.Col>
+                    </Grid>
+
+                    {/* Técnico asignado */}
+                    {assignedTechnician && (
+                        <Paper 
+                            p="sm" 
+                            radius="md" 
+                            bg="rgba(16, 185, 129, 0.2)" 
+                            withBorder
+                            style={{
+                                opacity: 0.8,
+                                border: '1px solid rgba(16, 185, 129, 0.5)',
+                            }}
+                        >
+                            <Group gap="sm">
+                                <Avatar
+                                    src={assignedTechnician.avatar}
+                                    size="sm"
+                                    radius="md"
+                                    color="green"
+                                    style={{ opacity: 0.8 }}
+                                >
+                                    {assignedTechnician.full_name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Box>
+                                    <Text size="sm" fw={500} c="green" style={{ opacity: 0.9 }}>
+                                        Técnico Asignado: {assignedTechnician.full_name}
+                                    </Text>
+                                    <Text size="xs" c="dimmed" style={{ opacity: 0.7 }}>
+                                        {assignedTechnician.location || 'Ubicación no especificada'}
+                                    </Text>
+                                </Box>
+                            </Group>
+                        </Paper>
+                    )}
+                </Stack>
+            </Card>
+            </div>
+        );
     };
 
     // Función para calcular métricas de proyectos
@@ -454,6 +819,13 @@ const Dashboard = () => {
             fetchAllIssues();
         }
     }, [problemsModalOpen]);
+
+    // Cargar issues cuando se active el modo de asignación
+    useEffect(() => {
+        if (assignMode) {
+            fetchAllIssues();
+        }
+    }, [assignMode]);
 
     // Calcular métricas de proyectos cuando cambien los proyectos
     useEffect(() => {
@@ -1812,6 +2184,17 @@ ${getTypeEmoji(problem.type)} Tipo: ${getTypeLabel(problem.type)}
                             >
                                 Compartir Todo
                             </Button>
+                            <Button 
+                                variant={assignMode ? "filled" : "light"} 
+                                color="green" 
+                                size="sm"
+                                leftSection={<IconUserPlus size={16} />}
+                                onClick={() => {
+                                    setAssignMode(!assignMode);
+                                }}
+                            >
+                                {assignMode ? "Exit Assign" : "Assign Mode"}
+                            </Button>
                         </Group>
                     </Group>
                 }
@@ -1892,99 +2275,189 @@ ${getTypeEmoji(problem.type)} Tipo: ${getTypeLabel(problem.type)}
                         </Grid.Col>
                     </Grid>
                 </Paper>
-                <Stack gap="md">
-                    {getFilteredProblems().map((problem) => (
-                        <Card key={problem.id} p="lg" radius="md" withBorder className="mobile-problem-card">
-                            <Stack gap="md">
-                                {/* Header del problema */}
-                                <Group justify="space-between" align="flex-start" className="mobile-problem-header">
-                                    <Group gap="sm">
-                                        <ThemeIcon 
-                                            size="lg" 
-                                            variant="light" 
-                                            color={
-                                                problem.type === 'Falla Mecánica' ? 'red' :
-                                                problem.type === 'Error de Software' ? 'blue' :
-                                                'orange'
-                                            }
-                                        >
-                                            <IconTools size={20} />
-                                        </ThemeIcon>
-                                        <Box>
-                                            <Text fw={600} size="lg" c="white" className="mobile-problem-title">
-                                                {getTypeLabel(problem.type)}
-                                            </Text>
-                                            <Text size="sm" c="dimmed" className="mobile-problem-date">
-                                                Reportado el {new Date(problem.date_reported).toLocaleDateString('es-MX')}
-                                            </Text>
-                                        </Box>
-                                    </Group>
-                                    <Group gap="sm">
-                                        <ActionIcon
-                                            variant="light"
-                                            color="blue"
-                                            size="lg"
-                                            onClick={() => shareIndividualProblem(problem)}
-                                            title="Compartir problema"
-                                        >
-                                            <IconShare size={18} />
-                                        </ActionIcon>
-                                        <Badge 
-                                            color={
-                                                problem.status === 'pendiente' ? 'red' :
-                                                problem.status === 'en-revision' ? 'yellow' :
-                                                'green'
-                                            }
-                                            variant="light"
-                                        >
-                                            {problem.status === 'pendiente' ? 'Pendiente' :
-                                             problem.status === 'en-revision' ? 'En Revisión' :
-                                             'Resuelto'}
-                                        </Badge>
-                                    </Group>
-                                </Group>
+                {assignMode ? (
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onDragCancel={handleDragCancel}
+                    >
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '1fr 1fr', 
+                            gap: '24px',
+                        alignItems: 'start'
+                    }}>
+                            {/* Columna izquierda - Problemas */}
+                            <div>
+                                <Text fw={600} size="lg" mb="md" c="white">
+                                    Problemas Reportados ({getFilteredProblems().length})
+                                </Text>
+                                <Stack gap="md">
+                        {getFilteredProblems().map((problem) => (
+                                        <DroppableProblemCard key={problem.id} problem={problem} />
+                                    ))}
+                                </Stack>
+                            </div>
 
-                                {/* Información del problema */}
-                                <Grid className="mobile-problem-info">
-                                    <Grid.Col span={6}>
-                                        <Stack gap="xs">
-                                            <Group gap="xs">
-                                                <Text size="sm" c="dimmed" className="mobile-problem-info-text">No. de Parte / VIN:</Text>
-                                                <Text size="sm" fw={500} c="white" className="mobile-problem-info-text">{problem.part_number_vin}</Text>
-                                            </Group>
-                                            <Group gap="xs">
-                                                <Text size="sm" c="dimmed" className="mobile-problem-info-text">Proyecto:</Text>
-                                                <Text size="sm" fw={500} c="white" className="mobile-problem-info-text">{problem.project}</Text>
-                                            </Group>
-                                        </Stack>
-                                    </Grid.Col>
-                                    <Grid.Col span={6}>
-                                        <Stack gap="xs">
-                                            <Group gap="xs">
-                                                <Text size="sm" c="dimmed" className="mobile-problem-info-text">Ubicación:</Text>
-                                                <Text 
-                                                    size="sm" 
-                                                    fw={500} 
-                                                    c="blue" 
-                                                    className="mobile-problem-location"
-                                                    style={{ 
-                                                        cursor: 'pointer', 
-                                                        textDecoration: 'underline',
-                                                        textDecorationColor: 'rgba(255, 255, 255, 0.3)'
-                                                    }}
-                                                    onClick={() => openLocationInMaps(problem.location)}
-                                                    title="Hacer clic para abrir en mapas"
-                                                >
-                                                    {problem.location}
+                            {/* Columna derecha - Técnicos */}
+                            <div>
+                                <Text fw={600} size="lg" mb="md" c="white">
+                                    Técnicos Disponibles ({employees.filter(emp => emp.role === 'tecnico').length})
+                                </Text>
+                                <SortableContext 
+                                    items={employees.filter(emp => emp.role === 'tecnico').map(emp => `tech-${emp.id}`)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <Stack gap="md">
+                                        {employees.filter(emp => emp.role === 'tecnico').map((technician) => (
+                                            <DraggableTechnicianCard key={technician.id} technician={technician} />
+                                        ))}
+                                    </Stack>
+                                </SortableContext>
+                            </div>
+                        </div>
+
+                        <DragOverlay>
+                            {activeTechnician ? (
+                            <Card 
+                                p="md" 
+                                radius="md" 
+                                withBorder 
+                                style={{
+                                        opacity: 0.8,
+                                        transform: 'rotate(5deg)',
+                                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+                                }}
+                            >
+                                        <Group gap="sm">
+                                        <Avatar
+                                            src={activeTechnician.avatar}
+                                                size="lg" 
+                                            radius="md"
+                                            color="blue"
+                                        >
+                                            {activeTechnician.full_name.charAt(0).toUpperCase()}
+                                        </Avatar>
+                                            <Box>
+                                            <Text fw={600} size="md" c="white">
+                                                {activeTechnician.full_name}
                                                 </Text>
-                                            </Group>
-                                        </Stack>
-                                    </Grid.Col>
-                                </Grid>
-                            </Stack>
-                        </Card>
-                    ))}
-                </Stack>
+                                            <Text size="sm" c="dimmed">
+                                                Técnico Especializado
+                                                </Text>
+                                            </Box>
+                                        </Group>
+                            </Card>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
+                ) : (
+                    <Stack gap="md">
+                        {getFilteredProblems().map((problem) => (
+                            <Card 
+                                key={problem.id} 
+                                p="lg" 
+                                radius="md" 
+                                withBorder 
+                                className="mobile-problem-card"
+                                style={{
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    opacity: 1,
+                                }}
+                            >
+                                <Stack gap="md">
+                                    {/* Header del problema */}
+                                    <Group justify="space-between" align="flex-start" className="mobile-problem-header">
+                                        <Group gap="sm">
+                                            <ThemeIcon 
+                                                size="lg" 
+                                                variant="light" 
+                                                color={
+                                                    problem.type === 'Falla Mecánica' ? 'red' :
+                                                    problem.type === 'Error de Software' ? 'blue' :
+                                                    'orange'
+                                                }
+                                            >
+                                                <IconTools size={20} />
+                                            </ThemeIcon>
+                                            <Box>
+                                                <Text fw={600} size="lg" c="white" className="mobile-problem-title">
+                                                    {getTypeLabel(problem.type)}
+                                                </Text>
+                                                <Text size="sm" c="dimmed" className="mobile-problem-date">
+                                                    Reportado el {new Date(problem.date_reported).toLocaleDateString('es-MX')}
+                                                </Text>
+                                            </Box>
+                                        </Group>
+                                        <Group gap="sm">
+                                            <ActionIcon
+                                                variant="light"
+                                                color="blue"
+                                                size="lg"
+                                                onClick={() => shareIndividualProblem(problem)}
+                                                title="Compartir problema"
+                                            >
+                                                <IconShare size={18} />
+                                            </ActionIcon>
+                                            <Badge 
+                                                color={
+                                                    problem.status === 'pendiente' ? 'red' :
+                                                    problem.status === 'en-revision' ? 'yellow' :
+                                                    'green'
+                                                }
+                                                variant="light"
+                                            >
+                                                {problem.status === 'pendiente' ? 'Pendiente' :
+                                                 problem.status === 'en-revision' ? 'En Revisión' :
+                                                 'Resuelto'}
+                                            </Badge>
+                                        </Group>
+                                    </Group>
+
+                                    {/* Información del problema */}
+                                    <Grid className="mobile-problem-info">
+                                        <Grid.Col span={6}>
+                                            <Stack gap="xs">
+                                                <Group gap="xs">
+                                                    <Text size="sm" c="dimmed" className="mobile-problem-info-text">No. de Parte / VIN:</Text>
+                                                    <Text size="sm" fw={500} c="white" className="mobile-problem-info-text">{problem.part_number_vin}</Text>
+                                                </Group>
+                                                <Group gap="xs">
+                                                    <Text size="sm" c="dimmed" className="mobile-problem-info-text">Proyecto:</Text>
+                                                    <Text size="sm" fw={500} c="white" className="mobile-problem-info-text">{problem.project}</Text>
+                                                </Group>
+                                            </Stack>
+                                        </Grid.Col>
+                                        <Grid.Col span={6}>
+                                            <Stack gap="xs">
+                                                <Group gap="xs">
+                                                    <Text size="sm" c="dimmed" className="mobile-problem-info-text">Ubicación:</Text>
+                                                    <Text 
+                                                        size="sm" 
+                                                        fw={500} 
+                                                        c="blue" 
+                                                        className="mobile-problem-location"
+                                                        style={{ 
+                                                            cursor: 'pointer', 
+                                                            textDecoration: 'underline',
+                                                            textDecorationColor: 'rgba(255, 255, 255, 0.3)'
+                                                        }}
+                                                        onClick={() => openLocationInMaps(problem.location)}
+                                                        title="Hacer clic para abrir en mapas"
+                                                    >
+                                                        {problem.location}
+                                                    </Text>
+                                                </Group>
+                                            </Stack>
+                                        </Grid.Col>
+                                    </Grid>
+                                </Stack>
+                            </Card>
+                        ))}
+                    </Stack>
+                )}
             </Modal>
 
             {/* Modal de Días Restantes */}

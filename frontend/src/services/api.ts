@@ -128,7 +128,10 @@ export const apiClient = {
         try {
             let response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
-                headers: getHeaders(),
+                headers: {
+                    ...getHeaders(),
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(data)
             });
             
@@ -139,7 +142,10 @@ export const apiClient = {
                     // Reintentar la petición con el nuevo token
                     response = await fetch(`${API_URL}${endpoint}`, {
                         method: 'POST',
-                        headers: getHeaders(),
+                        headers: {
+                            ...getHeaders(),
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify(data)
                     });
                 } else {
@@ -161,7 +167,10 @@ export const apiClient = {
         try {
             let response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'PUT',
-                headers: getHeaders(),
+                headers: {
+                    ...getHeaders(),
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(data)
             });
             
@@ -172,7 +181,10 @@ export const apiClient = {
                     // Reintentar la petición con el nuevo token
                     response = await fetch(`${API_URL}${endpoint}`, {
                         method: 'PUT',
-                        headers: getHeaders(),
+                        headers: {
+                            ...getHeaders(),
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify(data)
                     });
                 } else {

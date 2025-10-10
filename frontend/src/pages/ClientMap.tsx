@@ -1,17 +1,19 @@
 ﻿import { Paper, Title, Button, Group, TextInput, Select, ComboboxData, Center, Loader, Text, Stack, SimpleGrid } from '@mantine/core';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { IconSearch } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useLocations } from '../context/LocationContext';
 import { attendanceService } from '../services/attendance';
 import { RecentActivity } from '../types';
+import { issuesService, Issue } from '../services/issues';
+import L from 'leaflet';
 
 interface Location {
     id: number;
     name: string;
     coordinates: [number, number];
-    status: 'presente' | 'ausente' | 'en-ruta';
+    status: 'presente' | 'ausente' | 'en-ruta' | 'problema';
     city: string;
     checkInTime?: string;
     delayMinutes?: number;
@@ -43,7 +45,7 @@ const formatPhotoUrl = (photoData: string | null | undefined): string | null => 
 
 export default function ClientMap() {
     const [pulse, setPulse] = useState(true);
-    const [filter, setFilter] = useState<'todos' | 'presentes' | 'ausentes' | 'en-ruta'>('todos');
+    const [filter, setFilter] = useState<'todos' | 'presentes' | 'ausentes' | 'en-ruta' | 'problemas'>('todos');
     const [searchQuery, setSearchQuery] = useState('');
     const [projectSearchQuery, setProjectSearchQuery] = useState('');
     const [selectedCity, setSelectedCity] = useState<string | null>('todas');
@@ -51,6 +53,9 @@ export default function ClientMap() {
     const [isLoading, setIsLoading] = useState(true);
     const [showList, setShowList] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [reportedProblems, setReportedProblems] = useState<Issue[]>([]);
+    const [problemsLoading, setProblemsLoading] = useState(false);
+    const [employees, setEmployees] = useState<any[]>([]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -71,6 +76,20 @@ export default function ClientMap() {
         return () => window.removeEventListener('resize', checkIsMobile);
     }, []);
 
+    // Función para obtener problemas reportados
+    const fetchReportedProblems = async () => {
+        try {
+            setProblemsLoading(true);
+            const problems = await issuesService.getIssues();
+            setReportedProblems(problems);
+        } catch (error) {
+            console.error('Error fetching reported problems:', error);
+            setReportedProblems([]);
+        } finally {
+            setProblemsLoading(false);
+        }
+    };
+
     // Cargar ubicaciones iniciales
     useEffect(() => {
         const loadInitialLocations = async () => {
@@ -83,6 +102,9 @@ export default function ClientMap() {
                 // Obtener todos los técnicos con sus ubicaciones
                 const employees = await apiClient.get('/api/employees/with-locations');
                 console.log('Employees with locations:', employees);
+                
+                // Guardar empleados para uso en popups de problemas
+                setEmployees(employees);
 
                 // Limpiar ubicaciones existentes
                 window.dispatchEvent(new CustomEvent('clearLocations'));
@@ -132,9 +154,39 @@ export default function ClientMap() {
         return () => clearInterval(interval);
     }, []);
 
+    // Cargar problemas reportados al montar el componente
+    useEffect(() => {
+        fetchReportedProblems();
+    }, []);
+
     const formatName = (fullName: string) => {
         const [firstName, lastName] = fullName.split(' ');
         return `${firstName} ${lastName.charAt(0)}.`;
+    };
+
+    // Crear icono triangular amarillo para problemas
+    const createTriangleIcon = () => {
+        return L.divIcon({
+            className: 'custom-triangle-icon',
+            html: `<div style="
+                width: 0;
+                height: 0;
+                border-left: 8px solid transparent;
+                border-right: 8px solid transparent;
+                border-bottom: 16px solid #EAB308;
+                filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            "></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 16],
+            popupAnchor: [0, -16]
+        });
+    };
+
+    // Función para obtener el nombre del técnico asignado por ID
+    const getAssignedTechnicianName = (assignedUserId: number | null | undefined): string | null => {
+        if (!assignedUserId) return null;
+        const technician = employees.find(emp => emp.id === assignedUserId);
+        return technician ? technician.full_name : null;
     };
 
     const cityOptions: ComboboxData = [
@@ -150,7 +202,8 @@ export default function ClientMap() {
         const matchesStatus = filter === 'todos' ||
             (filter === 'presentes' && employee.status === 'presente') ||
             (filter === 'ausentes' && employee.status === 'ausente') ||
-            (filter === 'en-ruta' && employee.status === 'en-ruta');
+            (filter === 'en-ruta' && employee.status === 'en-ruta') ||
+            (filter === 'problemas' && employee.status === 'problema'); // Nuevo filtro para problemas
         const matchesCity = selectedCity === 'todas' || employee.city === selectedCity;
 
         return matchesSearch && matchesProject && matchesStatus && matchesCity;
@@ -367,6 +420,16 @@ export default function ClientMap() {
                                 >
                                     En ruta
                                 </Button>
+                                <Button
+                                    variant={filter === 'problemas' ? 'filled' : 'light'}
+                                    color="yellow"
+                                    onClick={() => setFilter('problemas')}
+                                    fullWidth
+                                    size="md"
+                                    style={{ minHeight: 44 }}
+                                >
+                                    Problemas
+                                </Button>
                             </SimpleGrid>
 
                             {/* Selector de ciudad */}
@@ -439,6 +502,13 @@ export default function ClientMap() {
                                 onClick={() => setFilter('en-ruta')}
                             >
                                 En ruta
+                            </Button>
+                            <Button
+                                variant={filter === 'problemas' ? 'filled' : 'light'}
+                                color="yellow"
+                                onClick={() => setFilter('problemas')}
+                            >
+                                Problemas
                             </Button>
 
                             <Select
@@ -549,10 +619,10 @@ export default function ClientMap() {
                                                             <Text 
                                                                 size="sm" 
                                                                 fw={500}
-                                                                c={employee.status === 'presente' ? '#10B981' : employee.status === 'ausente' ? '#EF4444' : '#F59E0B'}
+                                                                c={employee.status === 'presente' ? '#10B981' : employee.status === 'ausente' ? '#EF4444' : employee.status === 'en-ruta' ? '#F59E0B' : employee.status === 'problema' ? '#EAB308' : '#6B7280'}
                                                                 style={{ flexShrink: 0 }}
                                                             >
-                                                                {employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
+                                                                {employee.status === 'problema' ? 'Problema' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
                                                             </Text>
                                                         </Group>
 
@@ -638,8 +708,8 @@ export default function ClientMap() {
                                                 return (
                                                 <tr key={employee.id} style={{ borderBottom: '1px solid #333' }}>
                                                     <td style={{ padding: 8 }}>{employee.name}</td>
-                                                    <td style={{ padding: 8, color: employee.status === 'presente' ? '#10B981' : employee.status === 'ausente' ? '#EF4444' : '#F59E0B' }}>
-                                                        {employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
+                                                    <td style={{ padding: 8, color: employee.status === 'presente' ? '#10B981' : employee.status === 'ausente' ? '#EF4444' : employee.status === 'en-ruta' ? '#F59E0B' : employee.status === 'problema' ? '#EAB308' : '#6B7280' }}>
+                                                        {employee.status === 'problema' ? 'Problema' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
                                                     </td>
                                                     <td style={{ padding: 8 }}>{employee.projectName || 'Sin proyecto'}</td>
                                                     <td style={{ padding: 8 }}>{employee.checkInTime || 'N/A'}</td>
@@ -686,15 +756,86 @@ export default function ClientMap() {
                         </>
                     ) : (
                         <Paper p="md" radius="md" className="mobile-map-container" style={{ height: 'calc(100vh - 200px)' }}>
-                            {filteredEmployees.length === 0 ? (
+                            {(filter === 'problemas' ? reportedProblems.filter(problem => {
+                                if (!problem.location) return false;
+                                
+                                let lat: number, lng: number;
+                                
+                                // Manejar diferentes formatos de coordenadas
+                                if (problem.location.includes('Lat:') && problem.location.includes('Lng:')) {
+                                    const latMatch = problem.location.match(/Lat:\s*([+-]?\d*\.?\d+)/);
+                                    const lngMatch = problem.location.match(/Lng:\s*([+-]?\d*\.?\d+)/);
+                                    
+                                    if (!latMatch || !lngMatch) return false;
+                                    lat = parseFloat(latMatch[1]);
+                                    lng = parseFloat(lngMatch[1]);
+                                } else {
+                                    const coords = problem.location.split(',');
+                                    if (coords.length !== 2) return false;
+                                    
+                                    lat = parseFloat(coords[0].trim());
+                                    lng = parseFloat(coords[1].trim());
+                                }
+                                
+                                return !isNaN(lat) && !isNaN(lng) && 
+                                       lat >= -90 && lat <= 90 && 
+                                       lng >= -180 && lng <= 180;
+                            }).length === 0 : filteredEmployees.length === 0) ? (
                                 <Center style={{ height: '100%' }}>
-                                    <Text c="dimmed" className="mobile-no-data-text">No hay técnicos activos en este momento</Text>
+                                    <Text c="dimmed" className="mobile-no-data-text">
+                                        {filter === 'problemas' ? 'No hay problemas reportados con ubicación válida' : 'No hay técnicos activos en este momento'}
+                                    </Text>
                                 </Center>
                             ) : (
                                 <MapContainer
-                                    center={filteredEmployees.length > 0 
-                                        ? filteredEmployees[0].coordinates 
-                                        : [23.6345, -102.5528]}
+                                    center={(() => {
+                                        if (filter === 'problemas') {
+                                            const validProblems = reportedProblems.filter(problem => {
+                                                if (!problem.location) return false;
+                                                
+                                                let lat: number, lng: number;
+                                                
+                                                // Manejar diferentes formatos de coordenadas
+                                                if (problem.location.includes('Lat:') && problem.location.includes('Lng:')) {
+                                                    const latMatch = problem.location.match(/Lat:\s*([+-]?\d*\.?\d+)/);
+                                                    const lngMatch = problem.location.match(/Lng:\s*([+-]?\d*\.?\d+)/);
+                                                    
+                                                    if (!latMatch || !lngMatch) return false;
+                                                    lat = parseFloat(latMatch[1]);
+                                                    lng = parseFloat(lngMatch[1]);
+                                                } else {
+                                                    const coords = problem.location.split(',');
+                                                    if (coords.length !== 2) return false;
+                                                    
+                                                    lat = parseFloat(coords[0].trim());
+                                                    lng = parseFloat(coords[1].trim());
+                                                }
+                                                
+                                                return !isNaN(lat) && !isNaN(lng) && 
+                                                       lat >= -90 && lat <= 90 && 
+                                                       lng >= -180 && lng <= 180;
+                                            });
+                                            if (validProblems.length > 0) {
+                                                const problem = validProblems[0];
+                                                let lat: number, lng: number;
+                                                
+                                                if (problem.location!.includes('Lat:') && problem.location!.includes('Lng:')) {
+                                                    const latMatch = problem.location!.match(/Lat:\s*([+-]?\d*\.?\d+)/);
+                                                    const lngMatch = problem.location!.match(/Lng:\s*([+-]?\d*\.?\d+)/);
+                                                    lat = parseFloat(latMatch![1]);
+                                                    lng = parseFloat(lngMatch![1]);
+                                                } else {
+                                                    const coords = problem.location!.split(',');
+                                                    lat = parseFloat(coords[0].trim());
+                                                    lng = parseFloat(coords[1].trim());
+                                                }
+                                                return [lat, lng] as [number, number];
+                                            }
+                                        }
+                                        return filteredEmployees.length > 0 
+                                            ? filteredEmployees[0].coordinates 
+                                            : [23.6345, -102.5528];
+                                    })()}
                                     zoom={5}
                                     style={{ height: '100%', width: '100%', background: '#1A1B1E' }}
                                     zoomControl={false}
@@ -704,7 +845,8 @@ export default function ClientMap() {
                                         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                                     />
 
-                                    {filteredEmployees.map((employee) => {
+                                    {/* Marcadores de técnicos - no mostrar cuando filtro es 'problemas' */}
+                                    {filter !== 'problemas' && filteredEmployees.map((employee) => {
                                         console.log('DEBUG MARCADOR:', {
                                             name: employee.name,
                                             markerType: employee.markerType,
@@ -722,6 +864,8 @@ export default function ClientMap() {
                                             markerColor = '#EF4444'; // Rojo para ausentes
                                         } else if (employee.status === 'en-ruta') {
                                             markerColor = '#F59E0B'; // Naranja para en ruta
+                                        } else if (employee.status === 'problema') {
+                                            markerColor = '#EAB308'; // Amarillo para problemas
                                         }
                                         
                                         return (
@@ -745,7 +889,8 @@ export default function ClientMap() {
                                                                 <span style={{ color: markerColor, fontWeight: 500 }}>
                                                                     {employee.status === 'presente' ? 'Presente' : 
                                                                      employee.status === 'ausente' ? 'Ausente' : 
-                                                                     employee.status === 'en-ruta' ? 'En ruta' : 'Sin estado'}
+                                                                     employee.status === 'en-ruta' ? 'En ruta' : 
+                                                                     employee.status === 'problema' ? 'Problema' : 'Sin estado'}
                                                                 </span>
                                                                 <span className="mobile-popup-time" style={{ marginLeft: 8, color: '#555', fontSize: '0.95em' }}>
                                                                     {employee.checkInTime}
@@ -842,6 +987,173 @@ export default function ClientMap() {
                                             </CircleMarker>
                                         );
                                     })}
+
+                                    {/* Marcadores de problemas reportados - mostrar cuando filtro es 'todos' o 'problemas' */}
+                                    {(filter === 'todos' || filter === 'problemas') && reportedProblems
+                                        .filter(problem => {
+                                            // Filtrar problemas que tienen coordenadas válidas
+                                            if (!problem.location) return false;
+                                            
+                                            let lat: number, lng: number;
+                                            
+                                            // Manejar diferentes formatos de coordenadas
+                                            if (problem.location.includes('Lat:') && problem.location.includes('Lng:')) {
+                                                // Formato: "Lat: 25.465720, Lng: -100.966437"
+                                                const latMatch = problem.location.match(/Lat:\s*([+-]?\d*\.?\d+)/);
+                                                const lngMatch = problem.location.match(/Lng:\s*([+-]?\d*\.?\d+)/);
+                                                
+                                                if (!latMatch || !lngMatch) return false;
+                                                lat = parseFloat(latMatch[1]);
+                                                lng = parseFloat(lngMatch[1]);
+                                            } else {
+                                                // Formato: "29.06804441,-110.95180070"
+                                                const coords = problem.location.split(',');
+                                                if (coords.length !== 2) return false;
+                                                
+                                                lat = parseFloat(coords[0].trim());
+                                                lng = parseFloat(coords[1].trim());
+                                            }
+                                            
+                                            return !isNaN(lat) && !isNaN(lng) && 
+                                                   lat >= -90 && lat <= 90 && 
+                                                   lng >= -180 && lng <= 180;
+                                        })
+                                        .map((problem) => {
+                                            let lat: number, lng: number;
+                                            
+                                            // Parsear coordenadas según el formato
+                                            if (problem.location!.includes('Lat:') && problem.location!.includes('Lng:')) {
+                                                const latMatch = problem.location!.match(/Lat:\s*([+-]?\d*\.?\d+)/);
+                                                const lngMatch = problem.location!.match(/Lng:\s*([+-]?\d*\.?\d+)/);
+                                                lat = parseFloat(latMatch![1]);
+                                                lng = parseFloat(lngMatch![1]);
+                                            } else {
+                                                const coords = problem.location!.split(',');
+                                                lat = parseFloat(coords[0].trim());
+                                                lng = parseFloat(coords[1].trim());
+                                            }
+                                            
+                                            return (
+                                                <Marker
+                                                    key={`problem-${problem.id}`}
+                                                    position={[lat, lng]}
+                                                    icon={createTriangleIcon()}
+                                                >
+                                                    <Popup>
+                                                        <div style={{ 
+                                                            minWidth: 220, 
+                                                            backgroundColor: '#1A1B1E', 
+                                                            color: '#E9ECEF',
+                                                            padding: '12px',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid #373A40'
+                                                        }}>
+                                                            <div style={{ 
+                                                                fontWeight: 600, 
+                                                                fontSize: '1.1em', 
+                                                                marginBottom: 12, 
+                                                                color: '#EAB308',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px'
+                                                            }}>
+                                                                🚨 Problema Reportado
+                                                            </div>
+                                                            
+                                                            <div style={{ marginBottom: 8 }}>
+                                                                <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Tipo:</span>
+                                                                <div style={{ color: '#E9ECEF', marginTop: 2 }}>{problem.type}</div>
+                                                            </div>
+                                                            
+                                                            <div style={{ marginBottom: 8 }}>
+                                                                <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>VIN:</span>
+                                                                <div style={{ color: '#E9ECEF', marginTop: 2, fontFamily: 'monospace' }}>{problem.part_number_vin}</div>
+                                                            </div>
+                                                            
+                                                            <div style={{ marginBottom: 8 }}>
+                                                                <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Proyecto:</span>
+                                                                <div style={{ color: '#E9ECEF', marginTop: 2 }}>{problem.project}</div>
+                                                            </div>
+                                                            
+                                                            <div style={{ marginBottom: 8 }}>
+                                                                <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Estado:</span>
+                                                                <div style={{ marginTop: 2 }}>
+                                                                    <span style={{ 
+                                                                        color: problem.status === 'pendiente' ? '#EAB308' : 
+                                                                               problem.status === 'en-revision' ? '#F59E0B' : '#10B981',
+                                                                        fontWeight: 500,
+                                                                        fontSize: '0.95em'
+                                                                    }}>
+                                                                        {problem.status.charAt(0).toUpperCase() + problem.status.slice(1)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div style={{ marginBottom: 8 }}>
+                                                                <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Fecha:</span>
+                                                                <div style={{ color: '#E9ECEF', marginTop: 2 }}>
+                                                                    {new Date(problem.date_reported).toLocaleDateString('es-ES', {
+                                                                        year: 'numeric',
+                                                                        month: 'short',
+                                                                        day: 'numeric'
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {problem.assigned_user_id && getAssignedTechnicianName(problem.assigned_user_id) && (
+                                                                <div style={{ marginBottom: 8 }}>
+                                                                    <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Técnico Asignado:</span>
+                                                                    <div style={{ 
+                                                                        color: '#10B981', 
+                                                                        marginTop: 2, 
+                                                                        fontWeight: 500,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '6px'
+                                                                    }}>
+                                                                        👤 {getAssignedTechnicianName(problem.assigned_user_id)}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {(!problem.assigned_user_id || !getAssignedTechnicianName(problem.assigned_user_id)) && (
+                                                                <div style={{ marginBottom: 8 }}>
+                                                                    <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Técnico Asignado:</span>
+                                                                    <div style={{ 
+                                                                        color: '#EAB308', 
+                                                                        marginTop: 2, 
+                                                                        fontWeight: 500,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '6px'
+                                                                    }}>
+                                                                        ⚠️ Sin asignar
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {problem.description && (
+                                                                <div style={{ marginBottom: 8 }}>
+                                                                    <span style={{ color: '#ADB5BD', fontSize: '0.9em', fontWeight: 500 }}>Descripción:</span>
+                                                                    <div style={{ 
+                                                                        color: '#E9ECEF', 
+                                                                        marginTop: 2, 
+                                                                        fontSize: '0.9em',
+                                                                        lineHeight: '1.4',
+                                                                        backgroundColor: '#2C2E33',
+                                                                        padding: '8px',
+                                                                        borderRadius: '4px',
+                                                                        border: '1px solid #373A40'
+                                                                    }}>
+                                                                        {problem.description}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </Popup>
+                                                </Marker>
+                                            );
+                                        })}
                                 </MapContainer>
                             )}
                         </Paper>

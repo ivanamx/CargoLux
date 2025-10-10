@@ -75,7 +75,7 @@ async function subscribeToPushNotifications(userId: number, token: string) {
 interface User {
   id: number;
   email: string;
-  role: 'admin' | 'employee' | 'tecnico' | 'developer' | 'client';
+  role: 'admin' | 'employee' | 'tecnico' | 'developer' | 'client' | 'dre';
   full_name: string;
 }
 

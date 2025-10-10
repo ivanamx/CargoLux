@@ -18,6 +18,7 @@ import ScannerPage from './pages/ScannerPage';
 import ReportePDF from './pages/ReportePDF';
 import ProfessionalReportPDF from './pages/ProfessionalReportPDF';
 import PurchaseScans from './pages/PurchaseScans';
+import PanasonicMapView from './pages/PanasonicMapView';
 import { useInactivityTimer } from './hooks/useInactivityTimer';
 import { notifications } from '@mantine/notifications';
 
@@ -59,6 +60,8 @@ export default function AppContent() {
             return <Navigate to="/developer" replace />;
         } else if (user?.role === 'client') {
             return <Navigate to="/client" replace />;
+        } else if (user?.role === 'dre') {
+            return <Navigate to="/client-projects" replace />;
         }
         return <Navigate to="/dashboard" replace />;
     }
@@ -82,6 +85,18 @@ export default function AppContent() {
                 element={
                     isAuthenticated && user?.role === 'developer' ? (
                         <DeveloperDashboard />
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                } 
+            />
+
+            {/* Ruta para el mapa de DRE */}
+            <Route 
+                path="/dre-map" 
+                element={
+                    isAuthenticated && user?.role === 'dre' ? (
+                        <PanasonicMapView />
                     ) : (
                         <Navigate to="/login" replace />
                     )
@@ -138,7 +153,7 @@ export default function AppContent() {
             <Route 
                 path="/client-projects" 
                 element={
-                    isAuthenticated && user?.role === 'client' ? 
+                    isAuthenticated && (user?.role === 'client' || user?.role === 'dre') ? 
                         <AppLayout>
                             <ClientProjects />
                         </AppLayout> : 

@@ -682,6 +682,7 @@ class IssueUpdate(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
     resolved_at: Optional[datetime] = None
+    assigned_user_id: Optional[int] = None
 
 class IssueResponse(IssueBase):
     id: int
@@ -690,7 +691,10 @@ class IssueResponse(IssueBase):
     created_at: datetime
     updated_at: datetime
     created_by: Optional[int] = None
+    assigned_user_id: Optional[int] = None
+    assigned_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
+    assigned_user: Optional[dict] = None  # Información del técnico asignado
 
     class Config:
         from_attributes = True
@@ -699,4 +703,12 @@ class IssueResponse(IssueBase):
 class ProjectAssignmentRequest(BaseModel):
     project_id: int
     action: str  # "assign" o "unassign"
+
+# Esquema para asignación de issues/problemas
+class IssueAssignmentRequest(BaseModel):
+    issue_id: int
+    assigned_user_id: Optional[int] = None  # None para desasignar
+
+    class Config:
+        from_attributes = True
 
