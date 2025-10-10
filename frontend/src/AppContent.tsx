@@ -18,7 +18,6 @@ import ScannerPage from './pages/ScannerPage';
 import ReportePDF from './pages/ReportePDF';
 import ProfessionalReportPDF from './pages/ProfessionalReportPDF';
 import PurchaseScans from './pages/PurchaseScans';
-import PanasonicMapView from './pages/PanasonicMapView';
 import { useInactivityTimer } from './hooks/useInactivityTimer';
 import { notifications } from '@mantine/notifications';
 
@@ -91,17 +90,6 @@ export default function AppContent() {
                 } 
             />
 
-            {/* Ruta para el mapa de DRE */}
-            <Route 
-                path="/dre-map" 
-                element={
-                    isAuthenticated && user?.role === 'dre' ? (
-                        <PanasonicMapView />
-                    ) : (
-                        <Navigate to="/login" replace />
-                    )
-                } 
-            />
 
             {/* Ruta para el dashboard de admin */}
             <Route 

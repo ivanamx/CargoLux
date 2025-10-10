@@ -203,7 +203,7 @@ export default function ClientMap() {
             (filter === 'presentes' && employee.status === 'presente') ||
             (filter === 'ausentes' && employee.status === 'ausente') ||
             (filter === 'en-ruta' && employee.status === 'en-ruta') ||
-            (filter === 'problemas' && employee.status === 'problema'); // Nuevo filtro para problemas
+            (filter === 'problemas' && (employee.status as any) === 'problema'); // Nuevo filtro para problemas
         const matchesCity = selectedCity === 'todas' || employee.city === selectedCity;
 
         return matchesSearch && matchesProject && matchesStatus && matchesCity;
@@ -622,7 +622,7 @@ export default function ClientMap() {
                                                                 c={employee.status === 'presente' ? '#10B981' : employee.status === 'ausente' ? '#EF4444' : employee.status === 'en-ruta' ? '#F59E0B' : employee.status === 'problema' ? '#EAB308' : '#6B7280'}
                                                                 style={{ flexShrink: 0 }}
                                                             >
-                                                                {employee.status === 'problema' ? 'Problema' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
+                                                                {(employee.status as any) === 'problema' ? 'Problema' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
                                                             </Text>
                                                         </Group>
 
@@ -709,7 +709,7 @@ export default function ClientMap() {
                                                 <tr key={employee.id} style={{ borderBottom: '1px solid #333' }}>
                                                     <td style={{ padding: 8 }}>{employee.name}</td>
                                                     <td style={{ padding: 8, color: employee.status === 'presente' ? '#10B981' : employee.status === 'ausente' ? '#EF4444' : employee.status === 'en-ruta' ? '#F59E0B' : employee.status === 'problema' ? '#EAB308' : '#6B7280' }}>
-                                                        {employee.status === 'problema' ? 'Problema' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
+                                                        {(employee.status as any) === 'problema' ? 'Problema' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)}
                                                     </td>
                                                     <td style={{ padding: 8 }}>{employee.projectName || 'Sin proyecto'}</td>
                                                     <td style={{ padding: 8 }}>{employee.checkInTime || 'N/A'}</td>

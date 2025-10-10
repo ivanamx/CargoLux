@@ -55,7 +55,7 @@ export interface Employee {
     avatar: string;
     name: string;
     location: string;
-    status: 'presente' | 'ausente' | 'incapacidad';
+    status: 'presente' | 'ausente' | 'incapacidad' | 'problema';
     phone: string;
     email: string;
     project?: string;

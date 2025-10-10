@@ -4,7 +4,7 @@ export interface Employee {
     full_name: string;
     location: string;
     phone: string;
-    status: string;
+    status: 'presente' | 'ausente' | 'en-ruta' | 'problema';
     avatar?: string;
     personal_info: {
         curp: string;
